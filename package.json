@@ -1,0 +1,15 @@
+{
+  "name": "grandpalace",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "postinstall": "npm run install:all",
+    "build": "npm run build --prefix frontend",
+    "start": "node server.js"
+  }
+}
