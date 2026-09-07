@@ -12,8 +12,61 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const INTERNAL_BACKEND_PORT = process.env.INTERNAL_BACKEND_PORT || "4000";
+// Non-secret deployment defaults. These are fixed by how this app is wired
+// (the API always runs on an internal loopback port, never exposed), so they
+// live here rather than needing to be set by hand on every host. Anything
+// genuinely secret — DATABASE_URL, JWT_SECRET, Stripe and SMTP credentials —
+// must still come from the host's own environment variables and must never
+// be committed here.
+const DEFAULTS = {
+  NODE_ENV: "production",
+  INTERNAL_BACKEND_PORT: "4000",
+  NITRO_PRESET: "node-server",
+};
+
+for (const [key, value] of Object.entries(DEFAULTS)) {
+  if (!process.env[key]) process.env[key] = value;
+}
+
+const INTERNAL_BACKEND_PORT = process.env.INTERNAL_BACKEND_PORT;
 const PUBLIC_PORT = process.env.PORT || "3000";
+const INTERNAL_BACKEND_URL = `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`;
+
+// The public origin this site is served from — used for absolute URLs in
+// canonical tags, sitemap.xml, uploaded-image URLs and CORS. Falls back to
+// the SiteGround staging hostname; set SITE_ORIGIN on the host to override
+// (e.g. https://thegrandpalace.com.au once the domain is pointed here).
+const SITE_ORIGIN = process.env.SITE_ORIGIN || "https://ketanp10.sg-host.com";
+
+// Derived values the two apps expect under their own env var names. Set only
+// if the host hasn't already provided them, so a manual override still wins.
+const DERIVED = {
+  FRONTEND_URL: SITE_ORIGIN,
+  PUBLIC_URL: SITE_ORIGIN,
+  VITE_SITE_URL: SITE_ORIGIN,
+  VITE_API_URL: INTERNAL_BACKEND_URL,
+};
+
+for (const [key, value] of Object.entries(DERIVED)) {
+  if (!process.env[key]) process.env[key] = value;
+}
+
+if (!process.env.DATABASE_URL) {
+  console.error(
+    "FATAL: DATABASE_URL is not set. Add it as an environment variable on the host " +
+      "(SiteGround: Site Tools → Node.js → Environment Variables). It is a secret and " +
+      "is deliberately not committed to this repo.",
+  );
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET) {
+  console.error(
+    "FATAL: JWT_SECRET is not set. Add it as an environment variable on the host. " +
+      "It signs admin login sessions and is deliberately not committed to this repo.",
+  );
+  process.exit(1);
+}
 
 function startBackend() {
   const child = spawn(process.execPath, ["src/index.js"], {
@@ -34,11 +87,11 @@ function startFrontend() {
     env: {
       ...process.env,
       PORT: PUBLIC_PORT,
-      // BACKEND_URL (baked into the Nitro build's proxy rules — see
-      // vite.config.ts) must already be http://127.0.0.1:<INTERNAL_BACKEND_PORT>
-      // at BUILD time, set via the host's env vars. VITE_API_URL here only
-      // affects SSR loaders reading it at runtime (admin-api.ts's API_URL).
-      VITE_API_URL: `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`,
+      // BACKEND_URL (the Nitro proxy target) is baked into the build — see
+      // vite.config.ts — so it must be correct at BUILD time, not just here.
+      // The root package.json's build script sets it for that reason.
+      // VITE_API_URL below is read at runtime by SSR loaders (admin-api.ts).
+      VITE_API_URL: INTERNAL_BACKEND_URL,
     },
     stdio: "inherit",
   });
@@ -49,7 +102,9 @@ function startFrontend() {
   return child;
 }
 
+console.log(`Starting backend on ${INTERNAL_BACKEND_URL} (internal only)`);
 const backend = startBackend();
+console.log(`Starting frontend on port ${PUBLIC_PORT}, public origin ${SITE_ORIGIN}`);
 const frontend = startFrontend();
 
 function shutdown() {
