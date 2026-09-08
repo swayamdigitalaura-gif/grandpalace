@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+console.log("=== root server.js entry point started ===");
+
 // Non-secret deployment defaults. These are fixed by how this app is wired
 // (the API always runs on an internal loopback port, never exposed), so they
 // live here rather than needing to be set by hand on every host. Anything
