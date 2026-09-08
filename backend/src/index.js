@@ -20,6 +20,26 @@ import contentRoutes from "./routes/content.routes.js";
 import stripeRoutes from "./routes/stripe.routes.js";
 import mailTestRoutes from "./routes/mail-test.routes.js";
 
+// None of the route handlers below wrap their `await prisma...` calls in
+// try/catch, and there's no centralized Express error handler — an async
+// route handler that throws becomes an unhandled promise rejection, and
+// Node's default behaviour for that is to crash the entire process. This
+// was invisible in every previous test because DB connectivity was already
+// proven separately (row counts, admin-api round trips) — but a single
+// slow/cold connection on first request, or any other one-off DB hiccup, was
+// enough to kill the whole server: /api/health (no DB call) kept responding
+// from a health check made moments earlier, then every subsequent request —
+// including future /api/health calls, on a redeploy — 502'd because the
+// process was simply gone. Catching it here at the process level converts a
+// full crash into a single failed request, matching how the app is actually
+// expected to behave.
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception (request continues, process stays up):", err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled rejection (request continues, process stays up):", err);
+});
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -67,6 +87,20 @@ app.use("/api/stripe", stripeRoutes);
 app.use("/api/mail-test", mailTestRoutes);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+
+// Centralized error handler — catches anything passed to next(err) or
+// thrown/rejected inside an async route (Express 5's router forwards those
+// here automatically; without this, the response just hangs or falls
+// through to Express's default HTML error page). Keeps a route-level
+// failure a clean 500 JSON response instead of relying solely on the
+// process-level uncaughtException/unhandledRejection handlers above, which
+// exist to keep the *server* alive, not to give a well-formed response to
+// the *request* that triggered the error.
+app.use((err, req, res, next) => {
+  console.error(`Error handling ${req.method} ${req.path}:`, err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: "Internal server error" });
+});
 
 // Vercel imports `app` as a serverless handler; only listen when run directly (local dev).
 if (process.env.VERCEL === undefined) {
