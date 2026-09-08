@@ -14,6 +14,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 console.log("=== root server.js entry point started ===");
 
+// This orchestrator process crashing takes the site down even though the
+// backend it spawned (a separate OS process) keeps running and answering
+// requests fine — indistinguishable from the outside from "frontend never
+// started" without direct log access to this process (which SiteGround's
+// panel does not expose; only the build log is visible there). Log and
+// survive rather than risk silently losing the frontend to an error here.
+process.on("uncaughtException", (err) => {
+  console.error("server.js uncaught exception (staying up):", err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("server.js unhandled rejection (staying up):", err);
+});
+
 // Non-secret deployment defaults. These are fixed by how this app is wired
 // (the API always runs on an internal loopback port, never exposed), so they
 // live here rather than needing to be set by hand on every host. Anything
@@ -104,55 +117,28 @@ function startFrontend() {
   return child;
 }
 
-// Confirms the backend is actually reachable at INTERNAL_BACKEND_URL before
-// starting the frontend (whose proxy target is baked in at build time and
-// can't be redirected at runtime). Without this, the frontend can come up
-// and serve pages successfully while every /api/** call 502s silently if the
-// backend is slow to bind or bound to the wrong interface — exactly what
-// happened on first deploy (both processes reported healthy in the logs;
-// the mismatch was invisible without probing the connection directly).
-function waitForBackend(url, { timeoutMs = 30000, intervalMs = 500 } = {}) {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve, reject) => {
-    const attempt = () => {
-      fetch(`${url}/api/health`)
-        .then((res) => {
-          if (res.ok) return resolve();
-          retry();
-        })
-        .catch(retry);
-    };
-    const retry = () => {
-      if (Date.now() > deadline) {
-        return reject(new Error(`Backend did not become reachable at ${url} within ${timeoutMs}ms`));
-      }
-      setTimeout(attempt, intervalMs);
-    };
-    attempt();
-  });
-}
-
+// A previous version of this file gated startFrontend() behind an async
+// health-check probe of the backend (waitForBackend()), added while chasing
+// what turned out to be a database connectivity bug (DATABASE_URL pointed
+// at the public hostname; SiteGround's own server couldn't reliably reach
+// itself through it — fixed by using 127.0.0.1 instead). That gate added a
+// real risk of its own: an error anywhere in that async chain is unhandled
+// at this top level, and killing the *parent* process here does not kill
+// the backend — spawn()'d with its own stdio, it keeps running as an
+// independent OS process. The result was a backend that stayed up and kept
+// answering correctly while server.js itself silently died before ever
+// calling startFrontend(), which is indistinguishable from the outside
+// (curl) from "backend is fine, frontend never started" — exactly what was
+// observed. Removed now that the real bug is fixed; starting both
+// unconditionally is simpler and was the original, correct design.
 console.log(`Starting backend on ${INTERNAL_BACKEND_URL} (internal only)`);
 const backend = startBackend();
-let frontend;
-
-waitForBackend(INTERNAL_BACKEND_URL)
-  .then(() => {
-    console.log(`Backend confirmed reachable at ${INTERNAL_BACKEND_URL}`);
-    console.log(`Starting frontend on port ${PUBLIC_PORT}, public origin ${SITE_ORIGIN}`);
-    frontend = startFrontend();
-  })
-  .catch((err) => {
-    console.error(err.message);
-    console.error(
-      "Starting frontend anyway — /api/** requests will 502 until the backend becomes reachable.",
-    );
-    frontend = startFrontend();
-  });
+console.log(`Starting frontend on port ${PUBLIC_PORT}, public origin ${SITE_ORIGIN}`);
+const frontend = startFrontend();
 
 function shutdown() {
   backend.kill();
-  frontend?.kill();
+  frontend.kill();
   process.exit(0);
 }
 
