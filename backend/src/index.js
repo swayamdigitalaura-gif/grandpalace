@@ -70,8 +70,24 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 // Vercel imports `app` as a serverless handler; only listen when run directly (local dev).
 if (process.env.VERCEL === undefined) {
-  app.listen(PORT, () => {
-    console.log(`Grand Palace backend running on http://localhost:${PORT}`);
+  // Bind explicitly to the IPv4 loopback, not just PORT (which lets Node pick
+  // any available interface, including the IPv6 wildcard `::`). In the
+  // combined-app setup (see repo root server.js) the frontend reaches this
+  // backend at http://127.0.0.1:<port> — an IPv4 address — so if this process
+  // ends up bound only to the IPv6 stack on a given host, that connection
+  // fails even though the process itself is running and healthy. This was
+  // observed on SiteGround: the frontend served 200s while every proxied
+  // /api/** call 502'd, with no crash in either process — a bind mismatch,
+  // not an error, so nothing was thrown or logged either.
+  const server = app.listen(PORT, "127.0.0.1", () => {
+    console.log(`Grand Palace backend running on http://127.0.0.1:${PORT}`);
+  });
+  server.on("error", (err) => {
+    console.error(`Failed to bind 127.0.0.1:${PORT}: ${err.message}`);
+    console.error("Falling back to the default interface (all addresses).");
+    app.listen(PORT, () => {
+      console.log(`Grand Palace backend running on http://localhost:${PORT} (fallback bind)`);
+    });
   });
 }
 

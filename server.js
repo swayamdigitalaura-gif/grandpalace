@@ -102,14 +102,55 @@ function startFrontend() {
   return child;
 }
 
+// Confirms the backend is actually reachable at INTERNAL_BACKEND_URL before
+// starting the frontend (whose proxy target is baked in at build time and
+// can't be redirected at runtime). Without this, the frontend can come up
+// and serve pages successfully while every /api/** call 502s silently if the
+// backend is slow to bind or bound to the wrong interface — exactly what
+// happened on first deploy (both processes reported healthy in the logs;
+// the mismatch was invisible without probing the connection directly).
+function waitForBackend(url, { timeoutMs = 30000, intervalMs = 500 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      fetch(`${url}/api/health`)
+        .then((res) => {
+          if (res.ok) return resolve();
+          retry();
+        })
+        .catch(retry);
+    };
+    const retry = () => {
+      if (Date.now() > deadline) {
+        return reject(new Error(`Backend did not become reachable at ${url} within ${timeoutMs}ms`));
+      }
+      setTimeout(attempt, intervalMs);
+    };
+    attempt();
+  });
+}
+
 console.log(`Starting backend on ${INTERNAL_BACKEND_URL} (internal only)`);
 const backend = startBackend();
-console.log(`Starting frontend on port ${PUBLIC_PORT}, public origin ${SITE_ORIGIN}`);
-const frontend = startFrontend();
+let frontend;
+
+waitForBackend(INTERNAL_BACKEND_URL)
+  .then(() => {
+    console.log(`Backend confirmed reachable at ${INTERNAL_BACKEND_URL}`);
+    console.log(`Starting frontend on port ${PUBLIC_PORT}, public origin ${SITE_ORIGIN}`);
+    frontend = startFrontend();
+  })
+  .catch((err) => {
+    console.error(err.message);
+    console.error(
+      "Starting frontend anyway — /api/** requests will 502 until the backend becomes reachable.",
+    );
+    frontend = startFrontend();
+  });
 
 function shutdown() {
   backend.kill();
-  frontend.kill();
+  frontend?.kill();
   process.exit(0);
 }
 
