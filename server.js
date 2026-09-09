@@ -35,7 +35,12 @@ process.on("unhandledRejection", (err) => {
 // be committed here.
 const DEFAULTS = {
   NODE_ENV: "production",
-  INTERNAL_BACKEND_PORT: "58734",
+  // Must match build.js's own INTERNAL_BACKEND_PORT default — that script
+  // bakes BACKEND_URL into the frontend build using this same port, and the
+  // two are never read from a shared source, so a mismatch here silently
+  // points the deployed frontend's proxy at a port nothing is listening on
+  // (a 502 on every /api/** call) even though both processes start fine.
+  INTERNAL_BACKEND_PORT: "4000",
   NITRO_PRESET: "node-server",
 };
 
@@ -44,16 +49,24 @@ for (const [key, value] of Object.entries(DEFAULTS)) {
 }
 
 const PUBLIC_PORT = process.env.PORT || "3000";
+const INTERNAL_BACKEND_PORT = process.env.INTERNAL_BACKEND_PORT;
 
-// The host's own PORT is meant for the public-facing frontend only. If the
-// internal backend port were ever equal to it, the backend (Express, starts
-// faster) would win the bind race and answer every public request instead of
-// the frontend — producing Express's "Cannot GET /" for pages the frontend
-// should be serving, with no crash or error logged anywhere. Force the
-// internal port away from PUBLIC_PORT rather than let that collision happen
-// silently.
-const INTERNAL_BACKEND_PORT =
-  process.env.INTERNAL_BACKEND_PORT === PUBLIC_PORT ? "58734" : process.env.INTERNAL_BACKEND_PORT;
+// The host's own PORT is meant for the public-facing frontend only. If it
+// ever collided with the internal backend port, the backend (Express, binds
+// faster) would win the race and answer every public request instead of the
+// frontend — Express's "Cannot GET /" for pages the frontend should serve,
+// with nothing crashing or logged. Fail loudly rather than silently pick a
+// different port, which would only reintroduce the build/runtime mismatch
+// described above.
+if (INTERNAL_BACKEND_PORT === PUBLIC_PORT) {
+  console.error(
+    `FATAL: INTERNAL_BACKEND_PORT and PORT are both ${PUBLIC_PORT}. Set INTERNAL_BACKEND_PORT ` +
+      "to a different value in the host's environment variables (and rebuild, since build.js " +
+      "bakes it into the frontend too).",
+  );
+  process.exit(1);
+}
+
 const INTERNAL_BACKEND_URL = `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`;
 
 // The public origin this site is served from — used for absolute URLs in
