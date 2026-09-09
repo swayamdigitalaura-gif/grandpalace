@@ -35,7 +35,7 @@ process.on("unhandledRejection", (err) => {
 // be committed here.
 const DEFAULTS = {
   NODE_ENV: "production",
-  INTERNAL_BACKEND_PORT: "4000",
+  INTERNAL_BACKEND_PORT: "58734",
   NITRO_PRESET: "node-server",
 };
 
@@ -43,8 +43,17 @@ for (const [key, value] of Object.entries(DEFAULTS)) {
   if (!process.env[key]) process.env[key] = value;
 }
 
-const INTERNAL_BACKEND_PORT = process.env.INTERNAL_BACKEND_PORT;
 const PUBLIC_PORT = process.env.PORT || "3000";
+
+// The host's own PORT is meant for the public-facing frontend only. If the
+// internal backend port were ever equal to it, the backend (Express, starts
+// faster) would win the bind race and answer every public request instead of
+// the frontend — producing Express's "Cannot GET /" for pages the frontend
+// should be serving, with no crash or error logged anywhere. Force the
+// internal port away from PUBLIC_PORT rather than let that collision happen
+// silently.
+const INTERNAL_BACKEND_PORT =
+  process.env.INTERNAL_BACKEND_PORT === PUBLIC_PORT ? "58734" : process.env.INTERNAL_BACKEND_PORT;
 const INTERNAL_BACKEND_URL = `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`;
 
 // The public origin this site is served from — used for absolute URLs in
@@ -91,6 +100,9 @@ function startBackend() {
   });
   child.on("exit", (code) => {
     console.error(`Backend process exited with code ${code}, exiting.`);
+    // frontend is spawned with its own stdio, so it survives this process's
+    // exit as an orphan unless explicitly killed here first.
+    frontend?.kill();
     process.exit(code ?? 1);
   });
   return child;
@@ -112,6 +124,8 @@ function startFrontend() {
   });
   child.on("exit", (code) => {
     console.error(`Frontend process exited with code ${code}, exiting.`);
+    // same orphan risk as above, in the other direction.
+    backend?.kill();
     process.exit(code ?? 1);
   });
   return child;
