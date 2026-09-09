@@ -2,7 +2,17 @@
 // Database: PostgreSQL (hosted on Neon for now)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Default "native" only bundles a query engine binary matching whatever
+  // OS ran `prisma generate` at install time. On a managed host like
+  // SiteGround, the container that runs the build (`npm install` /
+  // postinstall) and the one that actually executes the app can differ
+  // (e.g. glibc vs musl) — in that case the engine binary present at
+  // runtime doesn't match the host's libc, @prisma/client throws
+  // synchronously on import, and the backend process dies before ever
+  // reaching app.listen(), with nothing logged anywhere visible in
+  // SiteGround's panel. Ship both common Linux targets so either works.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {

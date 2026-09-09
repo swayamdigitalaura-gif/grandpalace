@@ -9,8 +9,17 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { openSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// SiteGround exposes no runtime/application log for this process or its
+// children (stdio: "inherit" output has nowhere visible to go) — only the
+// build log is visible in the panel. Mirror backend startup output to a
+// plain file in the app directory instead, readable via File Manager, so a
+// backend crash (missing env var, DB connection failure, etc.) is
+// diagnosable without SSH access.
+const backendLogFd = openSync(path.join(__dirname, "backend-debug.log"), "a");
 
 console.log("=== root server.js entry point started ===");
 
@@ -109,10 +118,10 @@ function startBackend() {
   const child = spawn(process.execPath, ["src/index.js"], {
     cwd: path.join(__dirname, "backend"),
     env: { ...process.env, PORT: INTERNAL_BACKEND_PORT },
-    stdio: "inherit",
+    stdio: ["ignore", backendLogFd, backendLogFd],
   });
   child.on("exit", (code) => {
-    console.error(`Backend process exited with code ${code}, exiting.`);
+    console.error(`Backend process exited with code ${code}, exiting. See backend-debug.log.`);
     // frontend is spawned with its own stdio, so it survives this process's
     // exit as an orphan unless explicitly killed here first.
     frontend?.kill();
