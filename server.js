@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { openSync } from "node:fs";
+import { openSync, writeSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,9 +31,11 @@ console.log("=== root server.js entry point started ===");
 // survive rather than risk silently losing the frontend to an error here.
 process.on("uncaughtException", (err) => {
   console.error("server.js uncaught exception (staying up):", err);
+  writeSync(backendLogFd, `[server.js] uncaughtException: ${err?.stack || err}\n`);
 });
 process.on("unhandledRejection", (err) => {
   console.error("server.js unhandled rejection (staying up):", err);
+  writeSync(backendLogFd, `[server.js] unhandledRejection: ${err instanceof Error ? err.stack : err}\n`);
 });
 
 // Non-secret deployment defaults. These are fixed by how this app is wired
@@ -115,10 +117,23 @@ if (!process.env.JWT_SECRET) {
 }
 
 function startBackend() {
+  const backendCwd = path.join(__dirname, "backend");
+  writeSync(backendLogFd, `[server.js] spawning backend: cwd=${backendCwd} execPath=${process.execPath}\n`);
   const child = spawn(process.execPath, ["src/index.js"], {
-    cwd: path.join(__dirname, "backend"),
+    cwd: backendCwd,
     env: { ...process.env, PORT: INTERNAL_BACKEND_PORT },
     stdio: ["ignore", backendLogFd, backendLogFd],
+  });
+  // spawn() failing outright (bad cwd, ENOENT, EACCES) emits 'error' instead
+  // of 'exit' — without this listener, Node treats it as an unhandled error
+  // on the child EventEmitter, which our top-level uncaughtException handler
+  // swallows silently (logs to a console nothing captures) while leaving the
+  // frontend running alone, exactly matching a 502 on every /api/** call
+  // with nothing in backend-debug.log to explain why.
+  child.on("error", (err) => {
+    writeSync(backendLogFd, `[server.js] backend FAILED TO SPAWN: ${err.stack || err}\n`);
+    frontend?.kill();
+    process.exit(1);
   });
   child.on("exit", (code) => {
     console.error(`Backend process exited with code ${code}, exiting. See backend-debug.log.`);
