@@ -13,6 +13,7 @@ type JobPosting = {
   subtitle: string | null;
   badge1: string | null;
   badge2: string | null;
+  openings: number;
   requirements: string[];
   responsibilities: string[];
   published: boolean;
@@ -67,13 +68,14 @@ function AdminCareer() {
 }
 
 function JobFields({
-  title, setTitle, subtitle, setSubtitle, badge1, setBadge1, badge2, setBadge2,
+  title, setTitle, subtitle, setSubtitle, badge1, setBadge1, badge2, setBadge2, openings, setOpenings,
   requirements, setRequirements, responsibilities, setResponsibilities,
 }: {
   title: string; setTitle: (v: string) => void;
   subtitle: string; setSubtitle: (v: string) => void;
   badge1: string; setBadge1: (v: string) => void;
   badge2: string; setBadge2: (v: string) => void;
+  openings: number; setOpenings: (v: number) => void;
   requirements: string; setRequirements: (v: string) => void;
   responsibilities: string; setResponsibilities: (v: string) => void;
 }) {
@@ -83,9 +85,10 @@ function JobFields({
         <div><label className={labelCls}>Job Title</label><input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Chef / Cook" required /></div>
         <div><label className={labelCls}>Subtitle</label><input className={inputCls} value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="e.g. The Grand Palace Indian Restaurant · Sydney CBD" /></div>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-3 gap-3">
         <div><label className={labelCls}>Badge 1 (e.g. Full Time)</label><input className={inputCls} value={badge1} onChange={(e) => setBadge1(e.target.value)} placeholder="Full Time" /></div>
         <div><label className={labelCls}>Badge 2 (e.g. Current Opening)</label><input className={inputCls} value={badge2} onChange={(e) => setBadge2(e.target.value)} placeholder="Current Opening" /></div>
+        <div><label className={labelCls}>Number of Openings</label><input type="number" min={1} className={inputCls} value={openings} onChange={(e) => setOpenings(Math.max(1, Number(e.target.value) || 1))} /></div>
       </div>
       <div><label className={labelCls}>Requirements (one per line)</label><textarea className={inputCls} rows={5} value={requirements} onChange={(e) => setRequirements(e.target.value)} placeholder={"Minimum 3 years experience\nCertificate III or IV in Commercial Cookery"} /></div>
       <div><label className={labelCls}>Responsibilities (one per line)</label><textarea className={inputCls} rows={5} value={responsibilities} onChange={(e) => setResponsibilities(e.target.value)} placeholder={"Plan and oversee food preparation\nEnsure portion control and food quality standards"} /></div>
@@ -99,17 +102,18 @@ function NewJobForm({ nextSort, onSaved }: { nextSort: number; onSaved: () => vo
   const [subtitle, setSubtitle] = useState("");
   const [badge1, setBadge1] = useState("Full Time");
   const [badge2, setBadge2] = useState("Current Opening");
+  const [openings, setOpenings] = useState(1);
   const [requirements, setRequirements] = useState("");
   const [responsibilities, setResponsibilities] = useState("");
 
   const create = useMutation({
     mutationFn: () => api.post("/api/jobs", {
-      title, subtitle: subtitle || null, badge1: badge1 || null, badge2: badge2 || null,
+      title, subtitle: subtitle || null, badge1: badge1 || null, badge2: badge2 || null, openings,
       requirements: linesToList(requirements), responsibilities: linesToList(responsibilities),
       published: true, sortOrder: nextSort,
     }),
     onSuccess: () => {
-      setTitle(""); setSubtitle(""); setBadge1("Full Time"); setBadge2("Current Opening");
+      setTitle(""); setSubtitle(""); setBadge1("Full Time"); setBadge2("Current Opening"); setOpenings(1);
       setRequirements(""); setResponsibilities(""); setOpen(false); onSaved();
     },
   });
@@ -129,6 +133,7 @@ function NewJobForm({ nextSort, onSaved }: { nextSort: number; onSaved: () => vo
         subtitle={subtitle} setSubtitle={setSubtitle}
         badge1={badge1} setBadge1={setBadge1}
         badge2={badge2} setBadge2={setBadge2}
+        openings={openings} setOpenings={setOpenings}
         requirements={requirements} setRequirements={setRequirements}
         responsibilities={responsibilities} setResponsibilities={setResponsibilities}
       />
@@ -146,12 +151,13 @@ function JobCard({ job, onChanged }: { job: JobPosting; onChanged: () => void })
   const [subtitle, setSubtitle] = useState(job.subtitle ?? "");
   const [badge1, setBadge1] = useState(job.badge1 ?? "");
   const [badge2, setBadge2] = useState(job.badge2 ?? "");
+  const [openings, setOpenings] = useState(job.openings);
   const [requirements, setRequirements] = useState(listToLines(job.requirements));
   const [responsibilities, setResponsibilities] = useState(listToLines(job.responsibilities));
 
   const save = useMutation({
     mutationFn: () => api.patch(`/api/jobs/${job.id}`, {
-      title, subtitle: subtitle || null, badge1: badge1 || null, badge2: badge2 || null,
+      title, subtitle: subtitle || null, badge1: badge1 || null, badge2: badge2 || null, openings,
       requirements: linesToList(requirements), responsibilities: linesToList(responsibilities),
     }),
     onSuccess: () => { setEditing(false); onChanged(); },
@@ -173,6 +179,7 @@ function JobCard({ job, onChanged }: { job: JobPosting; onChanged: () => void })
           subtitle={subtitle} setSubtitle={setSubtitle}
           badge1={badge1} setBadge1={setBadge1}
           badge2={badge2} setBadge2={setBadge2}
+          openings={openings} setOpenings={setOpenings}
           requirements={requirements} setRequirements={setRequirements}
           responsibilities={responsibilities} setResponsibilities={setResponsibilities}
         />
@@ -201,6 +208,7 @@ function JobCard({ job, onChanged }: { job: JobPosting; onChanged: () => void })
       <div className="flex flex-wrap gap-2 mb-3">
         {job.badge1 && <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-800">{job.badge1}</span>}
         {job.badge2 && <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-green-100 text-green-800">{job.badge2}</span>}
+        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-stone-100 text-stone-600">{job.openings} opening{job.openings === 1 ? "" : "s"}</span>
       </div>
       <p className="text-[12px] text-stone-500 mb-1">{job.requirements.length} requirement{job.requirements.length === 1 ? "" : "s"} · {job.responsibilities.length} responsibilit{job.responsibilities.length === 1 ? "y" : "ies"}</p>
       <div className="flex gap-4 pt-3 border-t border-stone-100 mt-2">

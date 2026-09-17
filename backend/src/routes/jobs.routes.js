@@ -25,13 +25,14 @@ router.get("/admin", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { title, subtitle, badge1, badge2, requirements, responsibilities, published, sortOrder } = req.body;
+  const { title, subtitle, badge1, badge2, openings, requirements, responsibilities, published, sortOrder } = req.body;
   const job = await prisma.jobPosting.create({
     data: {
       title,
       subtitle: subtitle || null,
       badge1: badge1 || null,
       badge2: badge2 || null,
+      openings: openings ?? 1,
       requirements: requirements ?? [],
       responsibilities: responsibilities ?? [],
       published: published ?? true,

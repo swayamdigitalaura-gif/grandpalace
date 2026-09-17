@@ -319,6 +319,7 @@ model JobPosting {
   subtitle         String?
   badge1           String?  // e.g. "Full Time"
   badge2           String?  // e.g. "Current Opening"
+  openings         Int      @default(1) // how many positions are open for this role
   requirements     Json     // string[]
   responsibilities Json     // string[]
   published        Boolean  @default(true)

@@ -12,6 +12,7 @@ import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent
 type Job = {
   id: string;
   title: string; subtitle: string | null; badge1: string | null; badge2: string | null;
+  openings: number;
   requirements: string[]; responsibilities: string[];
 };
 
@@ -212,6 +213,7 @@ function CareerPage() {
                     <div>
                       <h3 className="font-display text-2xl text-cream">{job.title}</h3>
                       <p className="text-cream/55 text-[13px] mt-0.5">{job.subtitle}</p>
+                      <p className="text-saffron text-[12px] font-semibold mt-1">{job.openings} position{job.openings === 1 ? "" : "s"} open</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
