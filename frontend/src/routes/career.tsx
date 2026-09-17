@@ -6,11 +6,36 @@ import { Briefcase, Check, Mail, ChefHat, Clock, Upload, Loader2 } from "lucide-
 import mandala from "@/assets/mandala.png";
 import heroImgDefault from "@/assets/gallery/Interior_058.jpg";
 import kitchenImg from "@/assets/gallery/SLA09464.jpg";
-import { api } from "@/lib/admin-api";
+import { api, API_URL } from "@/lib/admin-api";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 
+type Job = {
+  id: string;
+  title: string; subtitle: string | null; badge1: string | null; badge2: string | null;
+  requirements: string[]; responsibilities: string[];
+};
+
+// Job openings are managed at Admin -> Career (add/edit/delete/hide), stored
+// in the JobPosting table — fetched here the same way set-menu.tsx reads its
+// packages, so admin changes show up without a code deploy.
+async function fetchJobs(): Promise<Job[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/jobs`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 export const Route = createFileRoute("/career")({
-  loader: () => fetchPageContent("/career"),
+  loader: async () => {
+    const [content, jobs] = await Promise.all([
+      fetchPageContent("/career"),
+      fetchJobs(),
+    ]);
+    return { content, jobs };
+  },
   head: () => ({
     meta: [
       { title: "Careers — The Grand Palace Indian Restaurant Sydney" },
@@ -19,48 +44,6 @@ export const Route = createFileRoute("/career")({
   }),
   component: CareerPage,
 });
-
-type Job = {
-  title: string; subtitle: string; badge1: string; badge2: string;
-  requirements: string[]; responsibilities: string[];
-};
-
-// The admin's Career tab manages this whole array as JSON under the
-// "jobs.list" block key — add/remove postings there, not by editing code.
-const DEFAULT_JOBS: Job[] = [
-  {
-    title: "Chef / Cook",
-    subtitle: "The Grand Palace Indian Restaurant · Sydney CBD",
-    badge1: "Full Time",
-    badge2: "Current Opening",
-    requirements: [
-      "Minimum 3–4 years culinary experience with Tandoor and Curry cooking",
-      "Certificate III or IV in Commercial Cookery (preferred)",
-      "Ability to prepare breads and meats in the Tandoor (Indian style clay oven)",
-      "Knowledge of Indian regional cuisines and spice blending techniques",
-      "Passion for authentic Indian cooking and commitment to quality",
-    ],
-    responsibilities: [
-      "Plan and oversee food preparation and cooking activities",
-      "Prepare breads and meats in the Tandoor (Indian style clay oven)",
-      "Estimate food requirements and maintain inventory records",
-      "Ensure portion control and food quality standards at all times",
-      "Maintain cleanliness to meet health and safety requirements",
-      "Assist with menu planning and garnishing techniques",
-      "Work collaboratively with the kitchen team during service",
-    ],
-  },
-];
-
-function parseJobs(raw: string | undefined): Job[] {
-  if (!raw) return DEFAULT_JOBS;
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_JOBS;
-  } catch {
-    return DEFAULT_JOBS;
-  }
-}
 
 type ApplyState = { name: string; email: string; phone: string; message: string };
 const EMPTY_APPLY: ApplyState = { name: "", email: "", phone: "", message: "" };
@@ -176,10 +159,11 @@ function ApplyForm({ role, onClose }: { role: string; onClose: () => void }) {
 }
 
 function CareerPage() {
-  const content = useLiveContent("/career", Route.useLoaderData());
+  const loaderData = Route.useLoaderData();
+  const content = useLiveContent("/career", loaderData.content);
   const c = makeContent(content);
   const heroImg = content["hero.image"] || heroImgDefault;
-  const jobs = parseJobs(content["jobs.list"]);
+  const jobs = loaderData.jobs;
   const [applyingTo, setApplyingTo] = useState<string | null>(null);
   return (
     <PageShell crumbs={[{ label: "Career" }]}>
@@ -217,8 +201,8 @@ function CareerPage() {
             </div>
           )}
           <div className="space-y-6">
-            {jobs.map((job, i) => (
-              <div key={i} className="rounded-2xl bg-white/80 border border-saffron/20 shadow-sm overflow-hidden">
+            {jobs.map((job) => (
+              <div key={job.id} className="rounded-2xl bg-white/80 border border-saffron/20 shadow-sm overflow-hidden">
                 {/* Job header */}
                 <div className="bg-palace p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-4 justify-between">
                   <div className="flex items-center gap-4">

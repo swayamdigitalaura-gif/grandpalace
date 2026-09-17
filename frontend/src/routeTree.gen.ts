@@ -33,6 +33,7 @@ import { Route as VenueCateringRouteImport } from './routes/venue-catering'
 import { Route as VenueForHireRouteImport } from './routes/venue-for-hire'
 import { Route as WhatsOnRouteImport } from './routes/whats-on'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminCareerRouteImport } from './routes/admin.career'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminGalleryRouteImport } from './routes/admin.gallery'
 import { Route as AdminGuidesRouteImport } from './routes/admin.guides'
@@ -175,6 +176,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCareerRoute = AdminCareerRouteImport.update({
+  id: '/career',
+  path: '/career',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminContentRoute = AdminContentRouteImport.update({
   id: '/content',
   path: '/content',
@@ -305,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/venue-catering': typeof VenueCateringRoute
   '/venue-for-hire': typeof VenueForHireRoute
   '/whats-on': typeof WhatsOnRouteWithChildren
+  '/admin/career': typeof AdminCareerRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/gallery': typeof AdminGalleryRoute
   '/admin/guides': typeof AdminGuidesRoute
@@ -347,6 +354,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/venue-catering': typeof VenueCateringRoute
   '/venue-for-hire': typeof VenueForHireRoute
+  '/admin/career': typeof AdminCareerRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/gallery': typeof AdminGalleryRoute
   '/admin/guides': typeof AdminGuidesRoute
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/venue-catering': typeof VenueCateringRoute
   '/venue-for-hire': typeof VenueForHireRoute
   '/whats-on': typeof WhatsOnRouteWithChildren
+  '/admin/career': typeof AdminCareerRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/gallery': typeof AdminGalleryRoute
   '/admin/guides': typeof AdminGuidesRoute
@@ -443,6 +452,7 @@ export interface FileRouteTypes {
     | '/venue-catering'
     | '/venue-for-hire'
     | '/whats-on'
+    | '/admin/career'
     | '/admin/content'
     | '/admin/gallery'
     | '/admin/guides'
@@ -485,6 +495,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/venue-catering'
     | '/venue-for-hire'
+    | '/admin/career'
     | '/admin/content'
     | '/admin/gallery'
     | '/admin/guides'
@@ -531,6 +542,7 @@ export interface FileRouteTypes {
     | '/venue-catering'
     | '/venue-for-hire'
     | '/whats-on'
+    | '/admin/career'
     | '/admin/content'
     | '/admin/gallery'
     | '/admin/guides'
@@ -751,6 +763,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/career': {
+      id: '/admin/career'
+      path: '/career'
+      fullPath: '/admin/career'
+      preLoaderRoute: typeof AdminCareerRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/content': {
       id: '/admin/content'
       path: '/content'
@@ -916,6 +935,7 @@ const AdminLeadsRouteWithChildren = AdminLeadsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminCareerRoute: typeof AdminCareerRoute
   AdminContentRoute: typeof AdminContentRoute
   AdminGalleryRoute: typeof AdminGalleryRoute
   AdminGuidesRoute: typeof AdminGuidesRoute
@@ -930,6 +950,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCareerRoute: AdminCareerRoute,
   AdminContentRoute: AdminContentRoute,
   AdminGalleryRoute: AdminGalleryRoute,
   AdminGuidesRoute: AdminGuidesRoute,

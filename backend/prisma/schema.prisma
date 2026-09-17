@@ -309,3 +309,22 @@ model Review {
 
   @@index([active])
 }
+
+// Job openings shown on /career. Admin-managed (add/edit/delete/reorder)
+// under Admin -> Career, replacing what used to be a hardcoded array in
+// career.tsx.
+model JobPosting {
+  id               String   @id @default(cuid())
+  title            String
+  subtitle         String?
+  badge1           String?  // e.g. "Full Time"
+  badge2           String?  // e.g. "Current Opening"
+  requirements     Json     // string[]
+  responsibilities Json     // string[]
+  published        Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([published])
+}

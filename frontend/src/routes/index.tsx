@@ -922,7 +922,6 @@ function CateringGrid() {
       buttons: [
         { label: "Explore More", to: "/venue-catering", variant: "gold" as const },
         { label: "Enquire Now", to: "/contact", variant: "outline" as const },
-        { label: "Send Email", href: "mailto:bookings@thegrandpalace.com.au", variant: "outline" as const },
       ],
     },
   ];

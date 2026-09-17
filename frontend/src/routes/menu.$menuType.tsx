@@ -1,6 +1,21 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { API_URL, type MenuCategory } from "@/lib/admin-api";
+
+// menuTypes with their own hand-built page (see Header.tsx's
+// KNOWN_MENU_TYPES) — this generic template only reads item.price, but
+// set-menu's items store pricing in item.extra.packagePrice instead (a
+// different shape for its "package" cards), so visiting this route directly
+// for one of these types rendered raw/broken content instead of the real
+// page. Redirect to the dedicated route instead. "a-la-carte" isn't listed —
+// its dedicated page is the more specific static route "/menu/a-la-carte",
+// which TanStack Router already matches before this dynamic $menuType
+// pattern, so it never actually reaches this loader.
+const DEDICATED_PAGES: Record<string, string> = {
+  "set-menu": "/set-menu",
+  "beverages": "/beverages",
+  "lunch-special": "/lunch-special",
+};
 
 // Server-rendered — this used to be a bare useQuery with no loader, so the
 // SSR response was always a "Loading menu…" shell with an empty category
@@ -18,6 +33,8 @@ async function fetchMenu(menuType: string): Promise<MenuCategory[]> {
 
 export const Route = createFileRoute("/menu/$menuType")({
   loader: async ({ params }) => {
+    const dedicated = DEDICATED_PAGES[params.menuType];
+    if (dedicated) throw redirect({ href: dedicated });
     const categories = await fetchMenu(params.menuType);
     if (categories.length === 0) throw notFound();
     return categories;
