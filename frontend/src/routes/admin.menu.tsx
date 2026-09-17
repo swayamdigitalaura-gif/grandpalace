@@ -15,6 +15,7 @@ const KNOWN_LABELS: Record<string, string> = {
   "a-la-carte": "À la Carte",
   "set-menu": "Set Menu",
   "beverages": "Beverages",
+  "lunch-special": "Lunch Special",
 };
 
 function AdminMenu() {

@@ -9,9 +9,29 @@ import beveragesCardImg from "@/assets/hero-beverages-wines.jpg";
 import { useSiteImage } from "@/lib/useSiteImage";
 import { useSiteToggle } from "@/lib/useSiteToggle";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
+import { API_URL, type MenuCategory as MenuCategoryDTO } from "@/lib/admin-api";
+
+// Server-rendered — fetched the same way set-menu.tsx reads its packages,
+// from the database (Admin → Menu → Lunch Special) instead of hardcoded
+// arrays, so pricing/inclusions/dishes are editable without a code change.
+async function fetchLunchSpecial(): Promise<MenuCategoryDTO[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/menu/lunch-special`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
 
 export const Route = createFileRoute("/lunch-special")({
-  loader: () => fetchPageContent("/lunch-special"),
+  loader: async () => {
+    const [content, categories] = await Promise.all([
+      fetchPageContent("/lunch-special"),
+      fetchLunchSpecial(),
+    ]);
+    return { content, categories };
+  },
   head: () => ({
     meta: [
       { title: "Lunch Special Set Menu — The Grand Palace" },
@@ -22,46 +42,37 @@ export const Route = createFileRoute("/lunch-special")({
 });
 
 /* ── DATA ─────────────────────────────────────────────────────── */
-const vegDishes = {
-  entrees: [
-    { name: "Paneer Schnitzel", img: "/dishes/PANEER-SCHNITZEL.png" },
-    { name: "Hariyali Kebab",   img: "/dishes/HARIYALI-KEBAB.png" },
-    { name: "Samosa",           img: "/dishes/TRIANGLE-SAMOSA.png" },
-    { name: "Onion Bhaji",      img: "/dishes/ONION-BHAJI.png" },
-  ],
-  curries: [
-    { name: "Navratan Korma",  img: "/dishes/Vegetables-Korma.png" },
-    { name: "Shahi Paneer",    img: "/dishes/KADHAI-PANEER.png" },
-    { name: "Aloo Gobhi",      img: "/dishes/Aloo-Gobhi.png" },
-    { name: "Bhindi Do Pyaza", img: "/dishes/BHINDI-DO-PYAZA.png" },
-  ],
+// Seeded via backend/scripts/seed-lunch-special.js: three package categories
+// (halka/fulka/bhari, each one MenuItem carrying the "what's included" text
+// in item.extra) plus a "menu-dishes" category whose items are the shared
+// dish gallery, split into columns by item.extra.group.
+type Dish = { name: string; img: string };
+type PackageInfo = {
+  price: string; desc: string; minimum: string;
+  entree?: string; main?: string; curries?: string; daal?: string; staples?: string; dessert?: string;
 };
 
-const nonVegDishes = {
-  entrees: [
-    { name: "Murgh Abir Tikka",       img: "/dishes/MURGH-ABEER-TIKKA.png" },
-    { name: "Saffron Chicken Tikka",  img: "/dishes/Entree_Saffron-Chicken-Tikka_01-ri381p5s1zwap0rpedu6zn6dx5gkaxtcbcqyo272f4.jpg" },
-    { name: "Kakori Kebab",           img: "/dishes/KAKORI-KEBAB.png" },
-    { name: "Semolina Crusted Prawns",img: "/dishes/SEMOLINA-CRUSTED-PRAWNS.png" },
-  ],
-  curries: [
-    { name: "Butter Chicken",       img: "/dishes/BUTTER-CHICKEN.png" },
-    { name: "Chicken Tikka Masala", img: "/dishes/Mains_Chicken-Tikka-Masala_04-scaled-ri388vne9fq5dsc8gzkljby5a42i3pbiyw5hn5jsw0.jpg" },
-    { name: "Chicken Saag Wala",    img: "/dishes/CHICKEN-SAAG-WALA-32.90.png" },
-    { name: "Kashmiri Rogan Josh",  img: "/dishes/Kashmiri-Rogan-Josh.png" },
-    { name: "Masala Fish Curry",    img: "/dishes/Masala-Fish-Curry.png" },
-  ],
-};
+function packageInfo(cat: MenuCategoryDTO | undefined): PackageInfo {
+  const extra = (cat?.items[0]?.extra ?? {}) as Record<string, string>;
+  return {
+    price: extra.packagePrice ?? "",
+    desc: extra.packageDesc ?? "",
+    minimum: extra.minimum ?? "",
+    entree: extra.entree,
+    main: extra.main,
+    curries: extra.curries,
+    daal: extra.daal,
+    staples: extra.staples,
+    dessert: extra.dessert,
+  };
+}
 
-const extras = {
-  daal: [
-    { name: "Lasooni Daal Tadka", img: "/dishes/LASOONI-DAAL-TADKA.png" },
-    { name: "Daal Makhani",       img: "/dishes/DAAL-MAKHANI.png" },
-  ],
-  dessert: [
-    { name: "Gulab Jamun", img: "/dishes/Dessert_Gulab-Jamun-ri38l5fjhkiwyiiitaj938gsh7l0lg1dbmrp77crnk.jpeg" },
-  ],
-};
+function dishesByGroup(categories: MenuCategoryDTO[], group: string): Dish[] {
+  const cat = categories.find((c) => c.slug === "menu-dishes");
+  return (cat?.items ?? [])
+    .filter((it) => (it.extra as Record<string, string> | null)?.group === group)
+    .map((it) => ({ name: it.name, img: it.imageUrl ?? "" }));
+}
 
 const notes = [
   "Available everyday, 12pm – 3pm",
@@ -75,10 +86,27 @@ const notes = [
 
 /* ── PAGE ─────────────────────────────────────────────────────── */
 function LunchSpecialPage() {
-  const content = useLiveContent("/lunch-special", Route.useLoaderData());
+  const loaderData = Route.useLoaderData();
+  const content = useLiveContent("/lunch-special", loaderData.content);
   const c = makeContent(content);
   const heroImg = useSiteImage("lunch-special-hero", content["hero.image"] || heroImgDefault);
   const active = useSiteToggle("lunch-special");
+  const categories = loaderData.categories;
+  const halka = packageInfo(categories.find((cat) => cat.slug === "halka"));
+  const fulka = packageInfo(categories.find((cat) => cat.slug === "fulka"));
+  const bhari = packageInfo(categories.find((cat) => cat.slug === "bhari"));
+  const vegDishes = {
+    entrees: dishesByGroup(categories, "veg-entree"),
+    curries: dishesByGroup(categories, "veg-curry"),
+  };
+  const nonVegDishes = {
+    entrees: dishesByGroup(categories, "nonveg-entree"),
+    curries: dishesByGroup(categories, "nonveg-curry"),
+  };
+  const extras = {
+    daal: dishesByGroup(categories, "daal"),
+    dessert: dishesByGroup(categories, "dessert"),
+  };
 
   if (!active) {
     return (
@@ -143,23 +171,23 @@ function LunchSpecialPage() {
             <div className="px-7 pt-8 pb-4">
               <p className="text-[9px] tracking-[0.55em] uppercase text-stone-400 mb-2">Solo Diner</p>
               <h3 data-tgp-key="halka.name" className="font-display leading-none" style={{ fontSize: "clamp(44px,6vw,60px)", color: "#2a1200" }}>{c("halka.name", "Halka")}</h3>
-              <p data-tgp-key="halka.tagline" className="text-[11px] tracking-[0.35em] uppercase mt-1 mb-5" style={{ color: "#c8860a" }}>{c("halka.tagline", "Light")}</p>
+              <p data-tgp-key="halka.tagline" className="text-[11px] tracking-[0.35em] uppercase mt-1 mb-5" style={{ color: "#c8860a" }}>{c("halka.tagline", halka.desc || "Light")}</p>
               <div className="flex items-baseline gap-2 mb-7">
-                <span data-tgp-key="halka.price" className="font-display" style={{ fontSize: "clamp(36px,5vw,50px)", color: "#2a1200" }}>{c("halka.price", "$35")}</span>
+                <span className="font-display" style={{ fontSize: "clamp(36px,5vw,50px)", color: "#2a1200" }}>{halka.price}</span>
                 <span className="text-stone-400 text-sm">/ person</span>
               </div>
             </div>
 
             <div className="px-7 pb-4 space-y-0 border-t" style={{ borderColor: "rgba(200,150,50,0.15)" }}>
               <p className="text-[9px] tracking-[0.5em] uppercase pt-5 pb-3 font-semibold" style={{ color: "#c8860a" }}>What's Included</p>
-              <IncludeRow icon="✗" label="Entrée" value="Not included" dim />
-              <IncludeRow icon="✓" label="Main" value="1 Curry (veg or non-veg)" />
-              <IncludeRow icon="✓" label="Staples" value="Assorted Breads · Basmati Rice" />
-              <IncludeRow icon="✗" label="Dessert" value="Not included" dim />
+              <IncludeRow icon="✗" label="Entrée" value={halka.entree ?? "Not included"} dim />
+              <IncludeRow icon="✓" label="Main" value={halka.main ?? ""} />
+              <IncludeRow icon="✓" label="Staples" value={halka.staples ?? ""} />
+              <IncludeRow icon="✗" label="Dessert" value={halka.dessert ?? "Not included"} dim />
             </div>
 
             <div className="px-7 pb-8 mt-auto pt-5">
-              <p className="text-[11px] text-stone-400 italic mb-4">Perfect for a solo lunch break</p>
+              <p className="text-[11px] text-stone-400 italic mb-4">{halka.minimum}</p>
               <Link to="/book-a-table"
                 className="block text-center py-3 rounded-full text-[12px] uppercase tracking-[0.2em] font-semibold border transition hover:bg-amber-50"
                 style={{ borderColor: "#c8860a", color: "#c8860a" }}>
@@ -179,24 +207,24 @@ function LunchSpecialPage() {
               </span>
               <p className="text-[9px] tracking-[0.55em] uppercase mb-2" style={{ color: "rgba(180,100,10,0.55)" }}>Min 2 Guests</p>
               <h3 data-tgp-key="fulka.name" className="font-display leading-none" style={{ fontSize: "clamp(44px,6vw,60px)", color: "#2a1200" }}>{c("fulka.name", "Fulka")}</h3>
-              <p data-tgp-key="fulka.tagline" className="text-[11px] tracking-[0.35em] uppercase mt-1 mb-5" style={{ color: "#c8860a" }}>{c("fulka.tagline", "Wholesome")}</p>
+              <p data-tgp-key="fulka.tagline" className="text-[11px] tracking-[0.35em] uppercase mt-1 mb-5" style={{ color: "#c8860a" }}>{c("fulka.tagline", fulka.desc || "Wholesome")}</p>
               <div className="flex items-baseline gap-2 mb-7">
-                <span data-tgp-key="fulka.price" className="font-display" style={{ fontSize: "clamp(36px,5vw,50px)", color: "#2a1200" }}>{c("fulka.price", "$45")}</span>
+                <span className="font-display" style={{ fontSize: "clamp(36px,5vw,50px)", color: "#2a1200" }}>{fulka.price}</span>
                 <span className="text-sm" style={{ color: "rgba(160,90,10,0.5)" }}>/ person</span>
               </div>
             </div>
 
             <div className="px-7 pb-4 space-y-0 border-t" style={{ borderColor: "rgba(200,134,10,0.18)" }}>
               <p className="text-[9px] tracking-[0.5em] uppercase pt-5 pb-3 font-semibold" style={{ color: "#c8860a" }}>What's Included</p>
-              <IncludeRow icon="✓" label="Entrée × 2" value="1 Veg + 1 Non-Veg" amber />
-              <IncludeRow icon="✓" label="Curries × 2" value="1 Veg + 1 Non-Veg" amber />
-              <IncludeRow icon="✓" label="Daal" value="Chef's choice" amber />
-              <IncludeRow icon="✓" label="Staples" value="Rice · Breads · Salad · Papadum" amber />
-              <IncludeRow icon="✓" label="Dessert" value="Gulab Jamun" amber />
+              <IncludeRow icon="✓" label="Entrée × 2" value={fulka.entree ?? ""} amber />
+              <IncludeRow icon="✓" label="Curries × 2" value={fulka.curries ?? ""} amber />
+              <IncludeRow icon="✓" label="Daal" value={fulka.daal ?? ""} amber />
+              <IncludeRow icon="✓" label="Staples" value={fulka.staples ?? ""} amber />
+              <IncludeRow icon="✓" label="Dessert" value={fulka.dessert ?? ""} amber />
             </div>
 
             <div className="px-7 pb-8 mt-auto pt-5">
-              <p className="text-[11px] italic mb-4" style={{ color: "rgba(160,90,10,0.5)" }}>Unlimited curries, rice & staples</p>
+              <p className="text-[11px] italic mb-4" style={{ color: "rgba(160,90,10,0.5)" }}>{fulka.minimum}</p>
               <Link to="/book-a-table"
                 className="block text-center py-3 rounded-full text-[12px] uppercase tracking-[0.2em] font-semibold text-white transition hover:brightness-110"
                 style={{ background: "linear-gradient(90deg,#c8860a,#e6a020)" }}>
@@ -216,24 +244,24 @@ function LunchSpecialPage() {
             <div className="px-7 pt-8 pb-4 relative">
               <p className="text-[9px] tracking-[0.55em] uppercase mb-2" style={{ color: "rgba(200,134,10,0.55)" }}>Min 2 Guests</p>
               <h3 data-tgp-key="bhari.name" className="font-display leading-none" style={{ fontSize: "clamp(44px,6vw,60px)", color: "#faf3e8" }}>{c("bhari.name", "Bhari")}</h3>
-              <p data-tgp-key="bhari.tagline" className="text-[11px] tracking-[0.35em] uppercase mt-1 mb-5" style={{ color: "#c8860a" }}>{c("bhari.tagline", "Bountiful Feast")}</p>
+              <p data-tgp-key="bhari.tagline" className="text-[11px] tracking-[0.35em] uppercase mt-1 mb-5" style={{ color: "#c8860a" }}>{c("bhari.tagline", bhari.desc || "Bountiful Feast")}</p>
               <div className="flex items-baseline gap-2 mb-7">
-                <span data-tgp-key="bhari.price" className="font-display" style={{ fontSize: "clamp(36px,5vw,50px)", color: "#faf3e8" }}>{c("bhari.price", "$60")}</span>
+                <span className="font-display" style={{ fontSize: "clamp(36px,5vw,50px)", color: "#faf3e8" }}>{bhari.price}</span>
                 <span className="text-sm" style={{ color: "rgba(200,134,10,0.5)" }}>/ person</span>
               </div>
             </div>
 
             <div className="px-7 pb-4 space-y-0 border-t relative" style={{ borderColor: "rgba(200,134,10,0.15)" }}>
               <p className="text-[9px] tracking-[0.5em] uppercase pt-5 pb-3 font-semibold" style={{ color: "rgba(200,134,10,0.7)" }}>What's Included</p>
-              <IncludeRowDark label="Entrée × 4" value="2 Veg + 2 Non-Veg" />
-              <IncludeRowDark label="Curries × 4" value="2 Veg + 2 Non-Veg" />
-              <IncludeRowDark label="Daal" value="Chef's choice" />
-              <IncludeRowDark label="Staples" value="Rice · Breads · Salad · Papadum" />
-              <IncludeRowDark label="Dessert" value="Gulab Jamun" />
+              <IncludeRowDark label="Entrée × 4" value={bhari.entree ?? ""} />
+              <IncludeRowDark label="Curries × 4" value={bhari.curries ?? ""} />
+              <IncludeRowDark label="Daal" value={bhari.daal ?? ""} />
+              <IncludeRowDark label="Staples" value={bhari.staples ?? ""} />
+              <IncludeRowDark label="Dessert" value={bhari.dessert ?? ""} />
             </div>
 
             <div className="px-7 pb-8 mt-auto pt-5 relative">
-              <p className="text-[11px] italic mb-4" style={{ color: "rgba(200,134,10,0.45)" }}>Unlimited curries, rice & staples for the table</p>
+              <p className="text-[11px] italic mb-4" style={{ color: "rgba(200,134,10,0.45)" }}>{bhari.minimum}</p>
               <Link to="/book-a-table"
                 className="block text-center py-3.5 rounded-full text-[12px] uppercase tracking-[0.22em] font-bold text-white transition hover:brightness-110"
                 style={{ background: "linear-gradient(90deg,#c8860a,#e6a020,#c8860a)", boxShadow: "0 4px 20px rgba(200,134,10,0.35)" }}>
