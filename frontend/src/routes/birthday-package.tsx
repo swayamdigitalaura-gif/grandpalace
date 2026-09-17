@@ -400,9 +400,22 @@ function BookingWizard({
     setStatus("submitting");
     window.open(NOWBOOKIT_URL, "_blank", "noopener,noreferrer");
     try {
-      await api.post("/api/birthday-enquiries", {
-        name: form.name, email: form.email, mobile: form.mobile, guests: form.guests,
-        date: form.date, time: form.time, cake: cake || null, message: form.message || null,
+      // Marks the SAME lead (by sessionId) the step-tracker above has been
+      // updating all along as "completed", instead of the old separate
+      // /api/birthday-enquiries endpoint (writes to a different table the
+      // admin Leads page never reads — a completed booking used to silently
+      // vanish from the admin's view even though the data was saved).
+      await api.post("/api/enquiries/track", {
+        sessionId: getSessionId(),
+        type: "birthday",
+        name: form.name || null,
+        email: form.email || null,
+        phone: form.mobile || null,
+        subject: "Celebrate Birthday Package Enquiry",
+        message: form.message || null,
+        step: STEP_LABEL[step],
+        status: "completed",
+        data: { guests: form.guests, date: form.date, time: form.time, cake: cake || null },
       });
       setStatus("success");
       sessionStorage.removeItem("tgp-birthday-session");
