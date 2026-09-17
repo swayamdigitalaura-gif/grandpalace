@@ -1,19 +1,19 @@
 # Grand Palace — combined app
 
 Merged repo for the Grand Palace frontend (TanStack Start + Nitro) and backend
-(Express + Prisma) so both run as **one Node.js app** under a single SiteGround
-Node.js deployment slot.
+(Express + Prisma) so both run as **one Node.js app**, deployed to a Contabo
+VPS under pm2 (process name `grand-palace`).
 
 ## Why merged
 
-SiteGround's Node.js panel ties one Node.js app to one site slot / one GitHub
-repo — there's no way to run two separate Node apps (frontend + backend) under
-the same site. `server.js` at the root starts the backend Express API as an
-internal child process (default port 4000, not publicly exposed) and starts
-the frontend's built Nitro server as the process SiteGround actually listens
-on. The frontend's `vite.config.ts` already proxies `/api/**` to `BACKEND_URL`
-— pointing that at `http://127.0.0.1:4000` keeps both apps' code completely
-unchanged from their standalone form.
+`server.js` at the root starts the backend Express API as an internal child
+process (default port 4000, not publicly exposed) and starts the frontend's
+built Nitro server as the process pm2 actually runs (public port 5005, proxied
+by nginx). The frontend's `vite.config.ts` already proxies `/api/**` to
+`BACKEND_URL` — pointing that at `http://127.0.0.1:4000` keeps both apps' code
+completely unchanged from their standalone form. This design was originally
+built for SiteGround (one Node.js app per site slot) but works identically on
+a plain VPS, so it was kept as-is for the Contabo move.
 
 ## Structure
 
@@ -25,7 +25,7 @@ grandpalace/
 └── package.json  # root install/build/start scripts
 ```
 
-## Required environment variables (set in SiteGround's Node.js → Environment Variables panel)
+## Required environment variables (set in `/home/grand-palace/shared/.env` on the server)
 
 **Build-time** (must be set before `npm run build` runs, since `vite.config.ts`
 bakes these into the Nitro output):
@@ -45,7 +45,7 @@ bakes these into the Nitro output):
 
 **Also**:
 - `NODE_ENV=production`
-- `PORT` — SiteGround sets this automatically for the public-facing process
+- `PORT` — set by pm2's `ecosystem.config.cjs` (5005), the port nginx proxies to
 
 See `backend/.env.example` for the full list with descriptions.
 
@@ -53,21 +53,31 @@ See `backend/.env.example` for the full list with descriptions.
 
 Local dev still runs frontend and backend as two separate processes (simpler
 for iterating on either independently) — this merge only matters for the
-single-process SiteGround deployment:
+single-process deployment on the server:
 
 ```bash
 cd backend && npm install && npm run dev     # http://localhost:4000
 cd frontend && npm install && npm run dev    # http://localhost:8080 (or similar)
 ```
 
-## SiteGround deployment
+## Contabo deployment
 
-1. Node.js app → Deploy method: GitHub, this repo, branch `main`
-2. Build command: `npm install` (root `postinstall` installs both subfolders'
-   deps; root `build` script builds the frontend)
-3. Startup file: `server.js`
-4. Set all environment variables listed above
-5. Save and deploy
+Deploys automatically via [.github/workflows/deploy-contabo.yml](.github/workflows/deploy-contabo.yml)
+on every push to `main`: builds the frontend on the GitHub Actions runner,
+rsyncs a release to `/home/grand-palace/releases/<sha>` on the server,
+symlinks it as `current`, runs `prisma migrate deploy`, and restarts the
+`grand-palace` pm2 process.
+
+- **Server**: `swayam@82.180.147.202`, directory `/home/grand-palace/`
+- **Uploads** (`backend/uploads/`) and **`.env`** live in `/home/grand-palace/shared/`,
+  symlinked into each release — they persist across deploys and are never
+  overwritten by a new release.
+- **Process**: `pm2 restart grand-palace` (no sudo needed); pm2 is registered
+  as a systemd service (`pm2-swayam`) so it survives a server reboot.
+- **Rollback**: re-point the `current` symlink at an older `releases/release-<sha>`
+  directory and `pm2 restart grand-palace` — the last 3 releases are kept.
+- **Manual deploy** (bypassing CI): SSH in, `cd /home/grand-palace`, then repeat
+  the steps in the workflow's "Activate release and restart" step.
 
 **Important**: `NITRO_PRESET`'s output path is Nitro-version-dependent — see
 the comment in `frontend/vite.config.ts` above the `preset:` line. If the

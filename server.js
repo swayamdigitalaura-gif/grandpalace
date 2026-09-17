@@ -1,41 +1,49 @@
-// Single entry point for the combined app on one Node.js host (SiteGround).
+// Single entry point for the combined app on one Node.js host.
 // Starts the backend Express API as a child process on an internal-only
 // port, then starts the frontend's built Nitro server (node-server preset)
-// as the process SiteGround actually listens on. The frontend's own
-// vite.config.ts routeRules already proxy /api/** to BACKEND_URL — pointing
-// BACKEND_URL at this internal port keeps both apps' code completely
-// unchanged, this file only wires the two already-independent servers
-// together as one deployable unit.
+// as the process pm2 actually runs. The frontend's own vite.config.ts
+// routeRules already proxy /api/** to BACKEND_URL — pointing BACKEND_URL at
+// this internal port keeps both apps' code completely unchanged, this file
+// only wires the two already-independent servers together as one
+// deployable unit.
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { openSync, writeSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// SiteGround exposes no runtime/application log for this process or its
-// children (stdio: "inherit" output has nowhere visible to go) — only the
-// build log is visible in the panel. Mirror backend startup output to a
-// plain file in the app directory instead, readable via File Manager, so a
-// backend crash (missing env var, DB connection failure, etc.) is
-// diagnosable without SSH access.
-const backendLogFd = openSync(path.join(__dirname, "backend-debug.log"), "a");
+// This process (not just the backend child it spawns) reads DATABASE_URL /
+// JWT_SECRET below to fail fast on misconfiguration, so it needs the same
+// .env the backend loads via its own "dotenv/config" import. Parsed by hand
+// (no "dotenv" dependency at the repo root — only backend/node_modules has
+// it) from backend/.env, the file actually managed on the server (symlinked
+// to shared/.env — see README's Contabo section).
+try {
+  const envPath = path.join(__dirname, "backend", ".env");
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+    if (!match) continue;
+    const [, key, rawValue = ""] = match;
+    const value = rawValue.replace(/^(['"])(.*)\1$/, "$2");
+    if (!(key in process.env)) process.env[key] = value;
+  }
+} catch {
+  // No backend/.env (e.g. local dev with env vars set another way) — fine,
+  // the FATAL checks below still catch genuinely missing required vars.
+}
 
 console.log("=== root server.js entry point started ===");
 
 // This orchestrator process crashing takes the site down even though the
 // backend it spawned (a separate OS process) keeps running and answering
-// requests fine — indistinguishable from the outside from "frontend never
-// started" without direct log access to this process (which SiteGround's
-// panel does not expose; only the build log is visible there). Log and
-// survive rather than risk silently losing the frontend to an error here.
+// requests fine. Log and survive rather than risk silently losing the
+// frontend to an error here; pm2 (`pm2 logs grand-palace`) captures this.
 process.on("uncaughtException", (err) => {
   console.error("server.js uncaught exception (staying up):", err);
-  writeSync(backendLogFd, `[server.js] uncaughtException: ${err?.stack || err}\n`);
 });
 process.on("unhandledRejection", (err) => {
   console.error("server.js unhandled rejection (staying up):", err);
-  writeSync(backendLogFd, `[server.js] unhandledRejection: ${err instanceof Error ? err.stack : err}\n`);
 });
 
 // Non-secret deployment defaults. These are fixed by how this app is wired
@@ -84,7 +92,7 @@ const INTERNAL_BACKEND_URL = `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`;
 // canonical tags, sitemap.xml, uploaded-image URLs and CORS. Falls back to
 // the SiteGround staging hostname; set SITE_ORIGIN on the host to override
 // (e.g. https://thegrandpalace.com.au once the domain is pointed here).
-const SITE_ORIGIN = process.env.SITE_ORIGIN || "https://ketanp10.sg-host.com";
+const SITE_ORIGIN = process.env.SITE_ORIGIN || "https://thegrandpalace.com.au";
 
 // Derived values the two apps expect under their own env var names. Set only
 // if the host hasn't already provided them, so a manual override still wins.
@@ -118,25 +126,24 @@ if (!process.env.JWT_SECRET) {
 
 function startBackend() {
   const backendCwd = path.join(__dirname, "backend");
-  writeSync(backendLogFd, `[server.js] spawning backend: cwd=${backendCwd} execPath=${process.execPath}\n`);
+  console.log(`[server.js] spawning backend: cwd=${backendCwd} execPath=${process.execPath}`);
   const child = spawn(process.execPath, ["src/index.js"], {
     cwd: backendCwd,
     env: { ...process.env, PORT: INTERNAL_BACKEND_PORT },
-    stdio: ["ignore", backendLogFd, backendLogFd],
+    stdio: "inherit",
   });
   // spawn() failing outright (bad cwd, ENOENT, EACCES) emits 'error' instead
   // of 'exit' — without this listener, Node treats it as an unhandled error
   // on the child EventEmitter, which our top-level uncaughtException handler
-  // swallows silently (logs to a console nothing captures) while leaving the
-  // frontend running alone, exactly matching a 502 on every /api/** call
-  // with nothing in backend-debug.log to explain why.
+  // swallows silently while leaving the frontend running alone, exactly
+  // matching a 502 on every /api/** call with nothing to explain why.
   child.on("error", (err) => {
-    writeSync(backendLogFd, `[server.js] backend FAILED TO SPAWN: ${err.stack || err}\n`);
+    console.error(`[server.js] backend FAILED TO SPAWN: ${err.stack || err}`);
     frontend?.kill();
     process.exit(1);
   });
   child.on("exit", (code) => {
-    console.error(`Backend process exited with code ${code}, exiting. See backend-debug.log.`);
+    console.error(`Backend process exited with code ${code}, exiting.`);
     // frontend is spawned with its own stdio, so it survives this process's
     // exit as an orphan unless explicitly killed here first.
     frontend?.kill();

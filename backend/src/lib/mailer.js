@@ -52,7 +52,7 @@ export async function sendMail({ to, subject, html, replyTo }) {
 /* ─────────────────────────── HTML templates ─────────────────────────── */
 
 const BRAND = { gold: "#c8860a", palace: "#1a0e00", cream: "#fdf6e8" };
-const LOGO_URL = `${process.env.SITE_URL || "https://ketanp10.sg-host.com"}/email-logo.png`;
+const LOGO_URL = `${process.env.SITE_URL || "https://thegrandpalace.com.au"}/email-logo.png`;
 
 // Public-facing contact details shown in every email footer. Deliberately
 // hardcoded to the real business details — independent of the SMTP/notification

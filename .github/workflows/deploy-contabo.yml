@@ -1,0 +1,112 @@
+name: Deploy Grand Palace to Contabo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  CONTABO_HOST: 82.180.147.202
+  DEPLOY_DIR: /home/grand-palace
+  PM2_APP_NAME: grand-palace
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        run: node build.js
+        env:
+          NITRO_PRESET: node-server
+          BACKEND_URL: http://127.0.0.1:4000
+          VITE_API_URL: http://127.0.0.1:4000
+          VITE_SITE_URL: https://thegrandpalace.com.au
+          SITE_ORIGIN: https://thegrandpalace.com.au
+          KEEP_FRONTEND_NODE_MODULES: "1"
+
+      - name: Prune frontend devDependencies
+        working-directory: frontend
+        run: npm prune --omit=dev
+
+      - name: Prune backend devDependencies
+        working-directory: backend
+        run: npm prune --omit=dev
+
+      - name: Package release
+        run: |
+          mkdir -p release
+          rsync -a --exclude '.git' --exclude '.github' \
+            server.js package.json backend frontend \
+            release/
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CONTABO_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$CONTABO_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload release
+        run: |
+          RELEASE="release-${{ github.sha }}"
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST" \
+            "mkdir -p $DEPLOY_DIR/releases/$RELEASE"
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_ed25519" \
+            release/ "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST:$DEPLOY_DIR/releases/$RELEASE/"
+
+      - name: Activate release and restart
+        run: |
+          RELEASE="release-${{ github.sha }}"
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST" bash -s <<EOF
+            set -e
+            cd "$DEPLOY_DIR"
+
+            # Uploaded files (gallery/menu/guide images) live outside any
+            # release so they survive every deploy instead of being wiped by
+            # the next release's directory.
+            mkdir -p shared/uploads
+            rm -rf "releases/$RELEASE/backend/uploads"
+            ln -s "$DEPLOY_DIR/shared/uploads" "releases/$RELEASE/backend/uploads"
+
+            # .env holds real secrets (DATABASE_URL, JWT_SECRET, Stripe, SMTP)
+            # and is managed on the server only, never in the repo or CI.
+            ln -sf "$DEPLOY_DIR/shared/.env" "releases/$RELEASE/backend/.env"
+
+            ln -sfn "releases/$RELEASE" current
+
+            cd current/backend
+            npx prisma generate
+            npx prisma migrate deploy
+
+            cd "$DEPLOY_DIR"
+            pm2 restart $PM2_APP_NAME --update-env || pm2 start ecosystem.config.cjs
+            pm2 save
+
+            # Keep the 3 most recent releases so a bad deploy can be rolled
+            # back by re-pointing the "current" symlink; prune the rest.
+            cd releases
+            ls -1dt release-* | tail -n +4 | xargs -r rm -rf
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 5
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST" \
+            "curl -sf http://127.0.0.1:5005/ -o /dev/null && echo 'OK: app responding on 5005'"

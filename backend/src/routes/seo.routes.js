@@ -6,7 +6,7 @@ const router = Router();
 
 // The site's own public URL — matches VITE_SITE_URL on the frontend. Update
 // this env var (not the code) when the real domain goes live.
-const SITE_URL = process.env.SITE_URL || "https://ketanp10.sg-host.com";
+const SITE_URL = process.env.SITE_URL || "https://thegrandpalace.com.au";
 
 const DEFAULT_ROBOTS_TXT = `User-Agent: *
 Allow: /

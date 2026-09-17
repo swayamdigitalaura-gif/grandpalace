@@ -26,7 +26,7 @@ const API_URL =
 const SITE_URL =
   (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
   import.meta.env.VITE_SITE_URL ||
-  "https://ketanp10.sg-host.com";
+  "https://thegrandpalace.com.au";
 
 class ApiError extends Error {
   status: number;

@@ -19,7 +19,7 @@ const env = {
   BACKEND_URL: process.env.BACKEND_URL || `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`,
   VITE_API_URL: process.env.VITE_API_URL || `http://127.0.0.1:${INTERNAL_BACKEND_PORT}`,
   VITE_SITE_URL:
-    process.env.VITE_SITE_URL || process.env.SITE_ORIGIN || "https://ketanp10.sg-host.com",
+    process.env.VITE_SITE_URL || process.env.SITE_ORIGIN || "https://thegrandpalace.com.au",
 };
 
 console.log(`Building frontend: preset=${env.NITRO_PRESET} backend=${env.BACKEND_URL}`);
