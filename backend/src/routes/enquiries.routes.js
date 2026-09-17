@@ -12,6 +12,7 @@ const VALID_TYPES = [
   "venue-catering",
   "venue-for-hire",
   "birthday",
+  "career",
 ];
 
 // ── Public: standard single-submit forms (Contact, Events, Catering, etc.) ──

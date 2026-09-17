@@ -19,6 +19,7 @@ export const LEAD_TYPES: { id: string; label: string }[] = [
   { id: "venue-catering", label: "Venue Catering" },
   { id: "venue-for-hire", label: "Venue Hire" },
   { id: "birthday", label: "Birthday" },
+  { id: "career", label: "Career" },
 ];
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; dot: string }> = {
@@ -44,6 +45,7 @@ const FIELD_LABELS: Record<string, string> = {
   eventType: "Event Type",
   preferredDate: "Preferred Date",
   preferredTime: "Preferred Time",
+  resumeUrl: "Resume",
 };
 
 function fieldLabel(key: string) {
@@ -300,7 +302,11 @@ function LeadCard({ lead, onChanged }: { lead: Enquiry; onChanged: () => void })
               {extraFields.map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3 border-b border-stone-100 py-1">
                   <span className="text-stone-400 shrink-0">{fieldLabel(k)}</span>
-                  <span className="text-stone-800 font-medium text-right break-all">{fieldValue(k, v)}</span>
+                  {k === "resumeUrl" ? (
+                    <a href={String(v)} target="_blank" rel="noreferrer" className="text-saffron hover:underline font-medium text-right">View Resume</a>
+                  ) : (
+                    <span className="text-stone-800 font-medium text-right break-all">{fieldValue(k, v)}</span>
+                  )}
                 </div>
               ))}
             </div>

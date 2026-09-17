@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
-import { Briefcase, Check, Mail, ChefHat, Clock } from "lucide-react";
+import { SimpleCaptcha, useSimpleCaptcha } from "@/components/SimpleCaptcha";
+import { Briefcase, Check, Mail, ChefHat, Clock, Upload, Loader2 } from "lucide-react";
 import mandala from "@/assets/mandala.png";
 import heroImgDefault from "@/assets/gallery/Interior_058.jpg";
 import kitchenImg from "@/assets/gallery/SLA09464.jpg";
+import { api } from "@/lib/admin-api";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 
 export const Route = createFileRoute("/career")({
@@ -59,11 +62,125 @@ function parseJobs(raw: string | undefined): Job[] {
   }
 }
 
+type ApplyState = { name: string; email: string; phone: string; message: string };
+const EMPTY_APPLY: ApplyState = { name: "", email: "", phone: "", message: "" };
+
+function ApplyForm({ role, onClose }: { role: string; onClose: () => void }) {
+  const [form, setForm] = useState<ApplyState>(EMPTY_APPLY);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
+  const captcha = useSimpleCaptcha();
+
+  function update(k: keyof ApplyState, v: string) {
+    setForm((f) => ({ ...f, [k]: v }));
+    setErrors((e) => ({ ...e, [k]: "" }));
+  }
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = "Name is required";
+    if (!form.email.trim()) e.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email";
+    if (!form.phone.trim()) e.phone = "Phone number is required";
+    return e;
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (!captcha.verify()) return;
+    setStatus("saving");
+    try {
+      let resumeUrl: string | null = null;
+      if (resumeFile) {
+        const uploaded = await api.upload<{ url: string }>("/api/career-uploads", resumeFile, "file");
+        resumeUrl = uploaded.url;
+      }
+      await api.post("/api/enquiries", {
+        type: "career",
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        subject: `${role} Application`,
+        message: form.message || null,
+        data: { role, resumeUrl },
+      });
+      setStatus("sent");
+    } catch {
+      setErrors({ submit: "Something went wrong. Please try again or email us directly." });
+      setStatus("error");
+    }
+  }
+
+  const fieldCls = (k: string) =>
+    `w-full rounded-lg border px-4 py-3 text-palace placeholder:text-palace/40 focus:outline-none focus:ring-2 transition text-sm ${
+      errors[k] ? "border-red-400 bg-red-50 focus:ring-red-200" : "border-saffron/30 bg-white/70 focus:border-saffron focus:ring-saffron/20"
+    }`;
+  const labelCls = "text-xs uppercase tracking-[0.2em] text-palace/60 mb-1.5 block";
+
+  if (status === "sent") {
+    return (
+      <div className="border-t border-saffron/15 bg-stone-50/80 p-6 md:p-8 text-center">
+        <p className="text-palace font-semibold text-[15px] mb-1">Application received!</p>
+        <p className="text-palace/60 text-[13px]">Thanks for applying — our hiring team will be in touch soon.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} noValidate className="border-t border-saffron/15 bg-stone-50/80 p-6 md:p-8 space-y-4">
+      <p className="text-palace/90 font-semibold text-[14px] mb-1">Apply for {role}</p>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Full Name *</label>
+          <input value={form.name} onChange={(e) => update("name", e.target.value)} className={fieldCls("name")} placeholder="Your full name" />
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+        </div>
+        <div>
+          <label className={labelCls}>Email *</label>
+          <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} className={fieldCls("email")} placeholder="your@email.com" />
+          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Phone Number *</label>
+        <input value={form.phone} onChange={(e) => update("phone", e.target.value)} className={fieldCls("phone")} placeholder="+61 4xx xxx xxx" />
+        {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+      </div>
+      <div>
+        <label className={labelCls}>Message</label>
+        <textarea value={form.message} onChange={(e) => update("message", e.target.value)} rows={4} className={`${fieldCls("message")} resize-none`}
+          placeholder="Tell us about your experience…" />
+      </div>
+      <div>
+        <label className={labelCls}>Resume / CV (PDF or Word, max 5MB)</label>
+        <label className="flex items-center gap-2 rounded-lg border border-dashed border-saffron/40 bg-white/70 px-4 py-3 text-sm text-palace/60 cursor-pointer hover:border-saffron/70 transition">
+          <Upload className="h-4 w-4 text-saffron shrink-0" />
+          {resumeFile ? resumeFile.name : "Choose a file…"}
+          <input type="file" accept=".pdf,.doc,.docx" className="hidden"
+            onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)} />
+        </label>
+      </div>
+      <SimpleCaptcha captcha={captcha} />
+      {errors.submit && <p className="text-red-500 text-xs">{errors.submit}</p>}
+      <div className="flex gap-3">
+        <button type="submit" disabled={status === "saving"} className="btn-gold flex items-center gap-2 disabled:opacity-60">
+          {status === "saving" ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : <>Submit Application</>}
+        </button>
+        <button type="button" onClick={onClose} className="btn-outline-gold">Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 function CareerPage() {
   const content = useLiveContent("/career", Route.useLoaderData());
   const c = makeContent(content);
   const heroImg = content["hero.image"] || heroImgDefault;
   const jobs = parseJobs(content["jobs.list"]);
+  const [applyingTo, setApplyingTo] = useState<string | null>(null);
   return (
     <PageShell crumbs={[{ label: "Career" }]}>
       {/* Hero */}
@@ -159,16 +276,20 @@ function CareerPage() {
                 </div>
 
                 {/* Apply bar */}
-                <div className="border-t border-saffron/15 bg-stone-50/80 p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
-                  <div>
-                    <p className="text-palace/90 font-semibold text-[14px] mb-1">How to Apply</p>
-                    <p className="text-palace/60 text-[13px]">Send your resume to our hiring team — we'd love to hear from passionate culinary professionals.</p>
+                {applyingTo === job.title ? (
+                  <ApplyForm role={job.title} onClose={() => setApplyingTo(null)} />
+                ) : (
+                  <div className="border-t border-saffron/15 bg-stone-50/80 p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+                    <div>
+                      <p className="text-palace/90 font-semibold text-[14px] mb-1">How to Apply</p>
+                      <p className="text-palace/60 text-[13px]">Fill out our quick application form — we'd love to hear from passionate culinary professionals.</p>
+                    </div>
+                    <button type="button" onClick={() => setApplyingTo(job.title)}
+                       className="btn-gold shrink-0 flex items-center gap-2">
+                      <Mail className="h-4 w-4" /> Apply Now
+                    </button>
                   </div>
-                  <a href={`mailto:bookings@thegrandpalace.com.au?subject=${encodeURIComponent(job.title + " Application — The Grand Palace")}`}
-                     className="btn-gold shrink-0 flex items-center gap-2">
-                    <Mail className="h-4 w-4" /> Apply Now
-                  </a>
-                </div>
+                )}
               </div>
             ))}
           </div>

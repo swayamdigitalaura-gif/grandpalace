@@ -11,6 +11,7 @@ import pagesRoutes from "./routes/pages.routes.js";
 import guidesRoutes from "./routes/guides.routes.js";
 import reviewsRoutes from "./routes/reviews.routes.js";
 import uploadsRoutes from "./routes/uploads.routes.js";
+import careerUploadsRoutes from "./routes/career-uploads.routes.js";
 import siteImagesRoutes from "./routes/site-images.routes.js";
 import siteTogglesRoutes from "./routes/site-toggles.routes.js";
 import birthdayEnquiriesRoutes from "./routes/birthday-enquiries.routes.js";
@@ -75,7 +76,7 @@ app.use(cors({
 // needs the raw request body to verify the signature — that route parses
 // it itself with express.raw().
 app.use((req, res, next) => {
-  if (req.path === "/api/uploads" || req.path === "/api/gallery/upload" || req.path === "/api/stripe/webhook") return next();
+  if (req.path === "/api/uploads" || req.path === "/api/gallery/upload" || req.path === "/api/career-uploads" || req.path === "/api/stripe/webhook") return next();
   express.json()(req, res, next);
 });
 app.use(cookieParser());
@@ -90,6 +91,7 @@ app.use("/api/pages", pagesRoutes);
 app.use("/api/guides", guidesRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/uploads", uploadsRoutes);
+app.use("/api/career-uploads", careerUploadsRoutes);
 app.use("/api/site-images", siteImagesRoutes);
 app.use("/api/site-toggles", siteTogglesRoutes);
 app.use("/api/birthday-enquiries", birthdayEnquiriesRoutes);
