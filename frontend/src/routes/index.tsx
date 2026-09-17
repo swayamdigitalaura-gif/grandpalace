@@ -193,6 +193,7 @@ function Home() {
               muted
               loop
               playsInline
+              preload="none"
             />
           </div>
 
@@ -648,8 +649,10 @@ function ContactSection() {
 
       <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-start">
 
-        {/* Left: info — dark theme */}
-        <div>
+        {/* Left: info — dark theme. order-2 on mobile so the form (below)
+            appears first — visitors land on the thing they came to do
+            (send a message) before scrolling past contact details. */}
+        <div className="order-2 lg:order-1">
           <div className="text-xs tracking-[0.5em] uppercase text-gold/70 mb-3">Get In Touch</div>
           <h2 className="font-display text-3xl md:text-5xl text-gold-gradient mb-4 leading-tight text-balance">
             Contact <br className="hidden md:block" />The Grand Palace - Indian Restaurant Sydney CBD
@@ -708,7 +711,7 @@ function ContactSection() {
         </div>
 
         {/* Right: form — off-white panel on dark section */}
-        <div className="bg-[oklch(0.97_0.025_85)] border border-gold/20 rounded-2xl p-8 shadow-[0_16px_60px_rgba(0,0,0,0.5)]">
+        <div className="order-1 lg:order-2 bg-[oklch(0.97_0.025_85)] border border-gold/20 rounded-2xl p-8 shadow-[0_16px_60px_rgba(0,0,0,0.5)]">
           {sent ? (
             <div className="text-center py-16">
               <div className="h-16 w-16 rounded-full bg-saffron/15 border border-saffron/40 flex items-center justify-center mx-auto mb-6">
@@ -935,12 +938,12 @@ function CateringGrid() {
             <h3 className="font-display text-2xl text-gold mb-1">{c.title}</h3>
             <p className="text-gold/70 text-[13px] font-medium tracking-wide mb-3">{c.tag}</p>
             <p className="text-muted-foreground text-sm leading-relaxed mb-6 flex-1">{c.body}</p>
-            <div className="flex flex-nowrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {c.buttons.map((b) =>
                 "to" in b ? (
-                  <Link key={b.label} to={b.to} className={`${b.variant === "gold" ? "btn-gold" : "btn-outline-gold"} flex-1 justify-center !text-[10.5px] !px-2 !py-2.5 whitespace-nowrap`}>{b.label}</Link>
+                  <Link key={b.label} to={b.to} className={`${b.variant === "gold" ? "btn-gold" : "btn-outline-gold"} flex-1 basis-[calc(50%-0.19rem)] justify-center !text-[10.5px] !px-2 !py-2.5 whitespace-nowrap`}>{b.label}</Link>
                 ) : (
-                  <a key={b.label} href={b.href} className="btn-outline-gold flex-1 justify-center !text-[10.5px] !px-2 !py-2.5 whitespace-nowrap">{b.label}</a>
+                  <a key={b.label} href={b.href} className="btn-outline-gold flex-1 basis-[calc(50%-0.19rem)] justify-center !text-[10.5px] !px-2 !py-2.5 whitespace-nowrap">{b.label}</a>
                 )
               )}
             </div>
