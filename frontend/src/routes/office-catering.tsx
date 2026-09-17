@@ -393,7 +393,16 @@ function PlatterOrderWizard() {
   function getSessionId(): string {
     if (sessionId.current) return sessionId.current;
     const existing = sessionStorage.getItem("tgp-catering-session");
-    const id = existing || crypto.randomUUID();
+    // crypto.randomUUID() only exists in "secure contexts" (HTTPS, or
+    // localhost) — undefined on a plain http:// origin that isn't localhost
+    // (e.g. testing directly by server IP). Calling it there throws inside
+    // the debounced tracking effect, silently breaking lead tracking on
+    // that origin only — see the matching fix in birthday-package.tsx.
+    const id =
+      existing ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     if (!existing) sessionStorage.setItem("tgp-catering-session", id);
     sessionId.current = id;
     return id;

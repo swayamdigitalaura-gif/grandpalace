@@ -358,7 +358,19 @@ function BookingWizard({
   function getSessionId(): string {
     if (sessionId.current) return sessionId.current;
     const existing = sessionStorage.getItem("tgp-birthday-session");
-    const id = existing || crypto.randomUUID();
+    // crypto.randomUUID() only exists in "secure contexts" (HTTPS, or
+    // localhost) per the Web Crypto API spec — it's undefined on a plain
+    // http:// origin that isn't localhost (e.g. testing directly by server
+    // IP before DNS/SSL are set up). Calling it there throws synchronously
+    // inside the debounced setTimeout below, which is never caught, so lead
+    // tracking silently stopped working the moment this was tested over
+    // plain HTTP — the production domain (HTTPS) was never affected. A
+    // manually built id needs no crypto API and works identically anywhere.
+    const id =
+      existing ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     if (!existing) sessionStorage.setItem("tgp-birthday-session", id);
     sessionId.current = id;
     return id;
