@@ -43,6 +43,19 @@ process.on("unhandledRejection", (err) => {
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// This process only ever receives requests proxied from the frontend's own
+// Nitro server (never directly from the internet — see root server.js and
+// vite.config.ts's "/api/**" proxy rule), which itself sits behind nginx
+// terminating TLS. `req.protocol`/`req.secure` would otherwise always read
+// "http" here regardless of what the browser actually used, since every hop
+// after nginx is a plain HTTP loopback connection. Trusting the proxy chain
+// makes Express read the real original protocol from X-Forwarded-Proto
+// (which nginx sets, and Nitro's proxy rule forwards) instead — needed so
+// the login cookie's `secure` flag below reflects reality instead of always
+// being true in production, which silently drops the cookie over plain HTTP
+// (e.g. testing by server IP before DNS/SSL are set up).
+app.set("trust proxy", true);
+
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000")
   .split(",")
   .map((s) => s.trim());

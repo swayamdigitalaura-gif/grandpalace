@@ -1,21 +1,29 @@
-// Absolute backend URL — used by SSR route loaders (menu, gallery, guides,
+// Absolute backend URL — used by route loaders (menu, gallery, guides,
 // whats-on, sitemap, etc.) that call `fetch(`${API_URL}${path}`)` directly.
-// Those run server-side in the Nitro function, where fetch() has NO implicit
-// origin, so this must stay an absolute URL — do NOT make it "" / relative,
-// that breaks every server-side data fetch on the site (they'd silently
-// fall back to stale bundled/default content instead of throwing loudly).
-// Resolved at RUNTIME on the server first (process.env), falling back to the
-// build-time inlined value. Self-hosted Node deployments (e.g. SiteGround)
-// inject env vars into the running process rather than the build, so a
-// build-time-only value silently stays stale there — every SSR fetch then
-// fails and the page quietly renders bundled fallback content instead of
-// live database content. `process` is undefined in the browser, hence the
-// typeof guard; browser code never uses this constant anyway (it fetches
-// relative paths through the /api/** proxy — see the note in request()).
+// These loaders run server-side on first load/full page refresh (in the
+// Nitro function, where fetch() has NO implicit origin — an absolute URL is
+// required there), but TanStack Router re-runs the SAME loaders in the
+// BROWSER on every client-side navigation (clicking a link). In the browser,
+// API_URL must resolve to "" (relative, same-origin), exactly like
+// admin-api.ts's own request() below already does — otherwise every
+// client-side navigation fetches the *build-time-baked* absolute domain
+// directly from the browser instead of this page's own origin, which
+// silently fails (wrong/unreachable host, or CORS) and the loader's
+// try/catch swallows it into an empty result. This bit us in production:
+// pages rendered fine on first load (SSR) but showed empty
+// galleries/pricing after any in-app navigation, whenever the site was
+// reached via a different origin than the one baked in at build time
+// (e.g. testing by IP before DNS pointed at the new host).
+// On the server, resolved at RUNTIME first (process.env), falling back to
+// the build-time inlined value — self-hosted Node deployments (e.g.
+// SiteGround, Contabo) inject env vars into the running process rather than
+// the build, so a build-time-only value would otherwise stay stale there.
 const API_URL =
-  (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:4000";
+  typeof window !== "undefined"
+    ? ""
+    : (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
+      import.meta.env.VITE_API_URL ||
+      "http://localhost:4000";
 
 // The site's own public URL — used for canonical tags, sitemap.xml,
 // robots.txt's Sitemap line, and OG/Twitter image URLs. Same runtime-first
