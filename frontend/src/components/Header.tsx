@@ -13,7 +13,7 @@ const BASE_MENU_ITEMS = [
 ];
 // menu types with a dedicated hand-built page already listed above — any
 // other menuType created in admin shows up automatically via /menu/$menuType.
-const KNOWN_MENU_TYPES = new Set(["a-la-carte", "set-menu", "beverages"]);
+const KNOWN_MENU_TYPES = new Set(["a-la-carte", "set-menu", "beverages", "lunch-special"]);
 
 function useMenuDropdownItems() {
   const { data } = useQuery({
