@@ -9,6 +9,7 @@ const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const FROM_NAME = process.env.MAIL_FROM_NAME || "The Grand Palace Indian Restaurant";
 export const BOOKINGS_EMAIL = process.env.BOOKINGS_EMAIL || "bookings@thegrandpalace.com.au";
+export const CAREERS_EMAIL = process.env.CAREERS_EMAIL || "careers@thegrandpalace.com.au";
 
 export function isMailConfigured() {
   return Boolean(SMTP_USER && SMTP_PASS);
@@ -263,5 +264,8 @@ export function enquiryBookingsEmail({ name, email, phone, type, subject: subj, 
      ])}`,
     { preheader: `New ${type} enquiry from ${name || "website"}` }
   );
-  return { to: BOOKINGS_EMAIL, subject: `New ${type || "website"} enquiry — ${name || "Guest"}`, html, replyTo: email || undefined };
+  // Career applications go to careers@, not bookings@ — a job applicant's
+  // details have nothing to do with what the bookings inbox is watched for.
+  const to = type === "career" ? CAREERS_EMAIL : BOOKINGS_EMAIL;
+  return { to, subject: `New ${type || "website"} enquiry — ${name || "Guest"}`, html, replyTo: email || undefined };
 }
