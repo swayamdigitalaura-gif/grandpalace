@@ -34,8 +34,7 @@ jobs:
         run: node build.js
         env:
           NITRO_PRESET: node-server
-          BACKEND_URL: http://127.0.0.1:4000
-          VITE_API_URL: http://127.0.0.1:4000
+          INTERNAL_BACKEND_PORT: "4001"
           VITE_SITE_URL: https://thegrandpalace.com.au
           SITE_ORIGIN: https://thegrandpalace.com.au
           KEEP_FRONTEND_NODE_MODULES: "1"
@@ -96,8 +95,8 @@ jobs:
             npx prisma migrate deploy
 
             cd "$DEPLOY_DIR"
-            pm2 restart $PM2_APP_NAME --update-env || pm2 start ecosystem.config.cjs
-            pm2 save
+            sudo -u swayam pm2 restart $PM2_APP_NAME --update-env
+            sudo -u swayam pm2 save
 
             # Keep the 3 most recent releases so a bad deploy can be rolled
             # back by re-pointing the "current" symlink; prune the rest.

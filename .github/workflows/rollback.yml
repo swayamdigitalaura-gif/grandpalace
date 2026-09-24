@@ -1,0 +1,69 @@
+name: Rollback Grand Palace on Contabo
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release folder name to roll back to (leave blank to auto-pick the previous release). See releases/ list printed by 'List available releases' if unsure."
+        required: false
+        default: ""
+
+env:
+  CONTABO_HOST: 82.180.147.202
+  DEPLOY_DIR: /home/grand-palace
+  PM2_APP_NAME: grand-palace
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CONTABO_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$CONTABO_HOST" >> ~/.ssh/known_hosts
+
+      - name: List available releases
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST" \
+            "echo 'Current:' && readlink -f $DEPLOY_DIR/current && echo && echo 'Available releases (newest first):' && ls -1dt $DEPLOY_DIR/releases/*/ "
+
+      - name: Roll back and restart
+        run: |
+          TARGET="${{ github.event.inputs.release }}"
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST" bash -s <<EOF
+            set -e
+            cd "$DEPLOY_DIR/releases"
+
+            CURRENT=\$(basename "\$(readlink -f "$DEPLOY_DIR/current")")
+
+            if [ -n "$TARGET" ]; then
+              TARGET_RELEASE="$TARGET"
+            else
+              # Pick the newest release that isn't the one currently live.
+              TARGET_RELEASE=\$(ls -1dt */ | sed 's#/##' | grep -v "^\$CURRENT\$" | head -n1)
+            fi
+
+            if [ -z "\$TARGET_RELEASE" ] || [ ! -d "\$TARGET_RELEASE" ]; then
+              echo "No valid target release found (current: \$CURRENT, requested: \$TARGET_RELEASE)"
+              exit 1
+            fi
+
+            echo "Rolling back: \$CURRENT -> \$TARGET_RELEASE"
+            cd "$DEPLOY_DIR"
+            ln -sfn "releases/\$TARGET_RELEASE" current
+
+            cd current/backend
+            npx prisma generate
+
+            cd "$DEPLOY_DIR"
+            sudo -u swayam pm2 restart $PM2_APP_NAME --update-env
+            sudo -u swayam pm2 save
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 5
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.CONTABO_SSH_USER }}@$CONTABO_HOST" \
+            "curl -sf http://127.0.0.1:5005/ -o /dev/null && echo 'OK: app responding on 5005 after rollback'"
