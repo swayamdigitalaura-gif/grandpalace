@@ -22,6 +22,7 @@ import { Route as EventsRouteImport } from './routes/events'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as GiftCardRouteImport } from './routes/gift-card'
 import { Route as GuidesRouteImport } from './routes/guides'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as LunchSpecialRouteImport } from './routes/lunch-special'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as OfficeCateringRouteImport } from './routes/office-catering'
@@ -119,6 +120,11 @@ const GiftCardRoute = GiftCardRouteImport.update({
 const GuidesRoute = GuidesRouteImport.update({
   id: '/guides',
   path: '/guides',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LunchSpecialRoute = LunchSpecialRouteImport.update({
@@ -301,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof GalleryRoute
   '/gift-card': typeof GiftCardRoute
   '/guides': typeof GuidesRouteWithChildren
+  '/llms.txt': typeof LlmsDottxtRoute
   '/lunch-special': typeof LunchSpecialRoute
   '/menu': typeof MenuRouteWithChildren
   '/office-catering': typeof OfficeCateringRoute
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/events': typeof EventsRoute
   '/gallery': typeof GalleryRoute
   '/gift-card': typeof GiftCardRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/lunch-special': typeof LunchSpecialRoute
   '/office-catering': typeof OfficeCateringRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -392,6 +400,7 @@ export interface FileRoutesById {
   '/gallery': typeof GalleryRoute
   '/gift-card': typeof GiftCardRoute
   '/guides': typeof GuidesRouteWithChildren
+  '/llms.txt': typeof LlmsDottxtRoute
   '/lunch-special': typeof LunchSpecialRoute
   '/menu': typeof MenuRouteWithChildren
   '/office-catering': typeof OfficeCateringRoute
@@ -442,6 +451,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/gift-card'
     | '/guides'
+    | '/llms.txt'
     | '/lunch-special'
     | '/menu'
     | '/office-catering'
@@ -487,6 +497,7 @@ export interface FileRouteTypes {
     | '/events'
     | '/gallery'
     | '/gift-card'
+    | '/llms.txt'
     | '/lunch-special'
     | '/office-catering'
     | '/robots.txt'
@@ -532,6 +543,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/gift-card'
     | '/guides'
+    | '/llms.txt'
     | '/lunch-special'
     | '/menu'
     | '/office-catering'
@@ -581,6 +593,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   GiftCardRoute: typeof GiftCardRoute
   GuidesRoute: typeof GuidesRouteWithChildren
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   LunchSpecialRoute: typeof LunchSpecialRoute
   MenuRoute: typeof MenuRouteWithChildren
   OfficeCateringRoute: typeof OfficeCateringRoute
@@ -684,6 +697,13 @@ declare module '@tanstack/react-router' {
       path: '/guides'
       fullPath: '/guides'
       preLoaderRoute: typeof GuidesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lunch-special': {
@@ -1032,6 +1052,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   GiftCardRoute: GiftCardRoute,
   GuidesRoute: GuidesRouteWithChildren,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   LunchSpecialRoute: LunchSpecialRoute,
   MenuRoute: MenuRouteWithChildren,
   OfficeCateringRoute: OfficeCateringRoute,
