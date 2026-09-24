@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
-import { api, API_URL, type GalleryImage } from "@/lib/admin-api";
+import { api, API_URL, SITE_URL, type GalleryImage } from "@/lib/admin-api";
 import type { SeoSetting } from "@/lib/admin-api";
 import { PageShell } from "@/components/PageShell";
 import { SimpleCaptcha, useSimpleCaptcha } from "@/components/SimpleCaptcha";
@@ -96,7 +96,13 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: description },
     ];
     if (seo?.ogImage) meta.push({ property: "og:image", content: seo.ogImage });
-    const links = seo?.canonicalUrl ? [{ rel: "canonical", href: seo.canonicalUrl }] : [];
+    // Falls back to SITE_URL rather than rendering no canonical tag at all
+    // when nothing's set in admin (Pages → SEO Settings) — every other page
+    // type (guides, blog, menu) derives its own canonical from SITE_URL
+    // directly and can never end up without one; the homepage previously
+    // could, and did, silently ship with no canonical tag for this exact
+    // reason until it was set by hand.
+    const links = [{ rel: "canonical", href: seo?.canonicalUrl || SITE_URL }];
     return { meta, links };
   },
   component: Home,
