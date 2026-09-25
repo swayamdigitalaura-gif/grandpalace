@@ -6,7 +6,7 @@ import {
   RESTAURANT_EMAIL,
   RESTAURANT_PHONE_DISPLAY,
 } from "@/lib/guidesContent";
-import { BLOG_SLUGS } from "@/lib/guidesListingData";
+import { BLOG_SLUGS, RETIRED_GUIDE_SLUGS } from "@/lib/guidesListingData";
 
 // llms.txt (https://llmstxt.org) — a plain-markdown summary of the site for AI
 // assistants, the way robots.txt/sitemap.xml are for crawlers. Business details
@@ -49,6 +49,7 @@ export const Route = createFileRoute("/llms.txt")({
           // still serve the bundled guides if the backend is briefly down
         }
 
+        for (const slug of RETIRED_GUIDE_SLUGS) titles.delete(slug);
         const blogSlugSet = new Set(BLOG_SLUGS);
         const toLine = ([slug, title]: [string, string], base: string) =>
           `- [${title}](${SITE_URL}/${base}/${slug})`;

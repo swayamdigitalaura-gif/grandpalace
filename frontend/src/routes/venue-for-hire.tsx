@@ -24,15 +24,11 @@ import int3           from "@/assets/gallery/Interior_062.jpg";
 import int4           from "@/assets/gallery/Interior_054.jpg";
 import int5           from "@/assets/gallery/Interior_055.jpg";
 import hero2          from "@/assets/gallery/Hero_007.jpg";
+import { faqSchema, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/venue-for-hire")({
   loader: () => fetchPageContent("/venue-for-hire"),
-  head: () => ({
-    meta: [
-      { title: "Private Venue for Hire Sydney CBD — The Grand Palace Indian Restaurant" },
-      { name: "description", content: "Hire The Grand Palace Indian Restaurant for your private event in Sydney CBD. Up to 125 guests. Birthdays, baby showers, anniversaries, corporate functions. From $45pp." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/venue-for-hire", [faqSchema(faqs.filter((f) => f.q !== "What is the minimum spend?"))]),
   component: VenueForHirePage,
 });
 
@@ -384,7 +380,7 @@ function Gallery() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {[int1, int2, int3, int4, int5, hero2].map((src, i) => (
             <div key={i} className="rounded-xl overflow-hidden aspect-[4/3] group">
-              <img src={src} alt="" loading="lazy" decoding="async"
+              <img src={src} alt={`The Grand Palace private function venue, Sydney CBD — photo ${i + 1}`} loading="lazy" decoding="async"
                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>
           ))}

@@ -2,13 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { API_URL, SITE_URL } from "@/lib/admin-api";
 import { guidesContent } from "@/lib/guidesContent";
 import { SITE_PAGES } from "@/lib/sitePages";
-import { BLOG_SLUGS } from "@/lib/guidesListingData";
+import { BLOG_SLUGS, RETIRED_GUIDE_SLUGS } from "@/lib/guidesListingData";
 
 // Every static page currently on the site, from the single shared list (also
 // used by the admin SEO panel) so the sitemap can never drift out of sync
 // with what's actually manageable in admin.
 const STATIC_PATHS = SITE_PAGES.map((p) => p.path);
 
+// Fallback only — the live list comes from /api/pages (every published
+// What's On page), so a page added in admin shows up here automatically.
 const WHATS_ON_SLUGS = ["order-online", "birthday-party-packages", "mocktails-and-cocktails-offer"];
 
 function xmlEscape(s: string) {
@@ -21,11 +23,17 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         let redirectedPaths = new Set<string>();
         let dbGuideSlugs: string[] = [];
+        let whatsOnSlugs = WHATS_ON_SLUGS;
         try {
-          const [seoRes, guidesRes] = await Promise.all([
+          const [seoRes, guidesRes, pagesRes] = await Promise.all([
             fetch(`${API_URL}/api/seo/sitemap-data`),
             fetch(`${API_URL}/api/guides`),
+            fetch(`${API_URL}/api/pages`),
           ]);
+          if (pagesRes.ok) {
+            const pages: { slug: string; published?: boolean }[] = await pagesRes.json();
+            whatsOnSlugs = pages.filter((p) => p.published !== false).map((p) => p.slug);
+          }
           if (seoRes.ok) {
             const data = await seoRes.json();
             redirectedPaths = new Set((data.redirects ?? []).map((r: { fromPath: string }) => r.fromPath));
@@ -40,8 +48,9 @@ export const Route = createFileRoute("/sitemap.xml")({
 
         const blogSlugSet = new Set(BLOG_SLUGS);
         const allGuideSlugs = new Set([...Object.keys(guidesContent), ...dbGuideSlugs]);
+        for (const slug of RETIRED_GUIDE_SLUGS) allGuideSlugs.delete(slug);
         const guidePaths = [...allGuideSlugs].map((slug) => (blogSlugSet.has(slug) ? `/blog/${slug}` : `/guides/${slug}`));
-        const whatsOnPaths = WHATS_ON_SLUGS.map((slug) => `/whats-on/${slug}`);
+        const whatsOnPaths = whatsOnSlugs.map((slug) => `/whats-on/${slug}`);
 
         const allPaths = [...STATIC_PATHS, ...guidePaths, ...whatsOnPaths]
           .filter((p) => !redirectedPaths.has(p));

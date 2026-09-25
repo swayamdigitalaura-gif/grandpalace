@@ -1,12 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { GuideTemplate, CANONICAL_BASE_URL } from "@/components/GuideTemplate";
+import { GuideTemplate } from "@/components/GuideTemplate";
 import { NormalGuideTemplate } from "@/components/NormalGuideTemplate";
 import { getGuide, type GuideContent } from "@/lib/guidesContent";
 import { API_URL, type Guide } from "@/lib/admin-api";
-
-// Sitewide default OG/Twitter image — same fallback __root.tsx uses — for
-// guides that don't (yet) have a hero image of their own.
-const DEFAULT_OG_IMAGE = `${CANONICAL_BASE_URL}/site-image-defaults/about-hero.jpg`;
+import { guideHead } from "@/lib/seo";
 
 // Admin-created/edited guides live in the backend; the original hand-built
 // guides still ship bundled as a fallback so nothing breaks if the API is
@@ -53,27 +50,7 @@ export const Route = createFileRoute("/guides/$slug")({
     if (!guide) throw notFound();
     return guide;
   },
-  head: ({ loaderData }) => {
-    if (!loaderData) return { meta: [] };
-    const canonical = `${CANONICAL_BASE_URL}/guides/${loaderData.slug}`;
-    const ogImage = loaderData.heroImage || DEFAULT_OG_IMAGE;
-    return {
-      meta: [
-        { title: loaderData.metaTitle },
-        { name: "description", content: loaderData.metaDescription },
-        { property: "og:title", content: loaderData.metaTitle },
-        { property: "og:description", content: loaderData.metaDescription },
-        { property: "og:type", content: "article" },
-        { property: "og:url", content: canonical },
-        { property: "og:image", content: ogImage },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: loaderData.metaTitle },
-        { name: "twitter:description", content: loaderData.metaDescription },
-        { name: "twitter:image", content: ogImage },
-      ],
-      links: [{ rel: "canonical", href: canonical }],
-    };
-  },
+  head: (ctx) => (ctx.loaderData ? guideHead(ctx, "/guides", ctx.loaderData) : { meta: [] }),
   component: GuidePage,
 });
 

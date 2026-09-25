@@ -10,6 +10,7 @@ import { useSiteImage } from "@/lib/useSiteImage";
 import { useSiteToggle } from "@/lib/useSiteToggle";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 import { API_URL, type MenuCategory as MenuCategoryDTO } from "@/lib/admin-api";
+import { pageHead } from "@/lib/seo";
 
 // Server-rendered — fetched the same way set-menu.tsx reads its packages,
 // from the database (Admin → Menu → Lunch Special) instead of hardcoded
@@ -32,12 +33,7 @@ export const Route = createFileRoute("/lunch-special")({
     ]);
     return { content, categories };
   },
-  head: () => ({
-    meta: [
-      { title: "Lunch Special Set Menu — The Grand Palace" },
-      { name: "description", content: "Three curated lunch banquets — Halka $35, Fulka $45, Bhari $60. Available everyday 12pm–3pm at The Grand Palace, Sydney CBD." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/lunch-special"),
   component: LunchSpecialPage,
 });
 
@@ -352,7 +348,7 @@ function LunchSpecialPage() {
       {/* ══ NOTES ══ */}
       <div style={{ background: "linear-gradient(120deg,#221000,#3d1f06 60%,#221000)" }}>
         <div className="max-w-4xl mx-auto px-6 py-14">
-          <MandalaDivider tone="gold" />
+          <MandalaDivider />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {notes.map((note, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3.5 rounded-xl"

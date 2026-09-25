@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { API_URL, SITE_URL } from "../lib/admin-api";
+import { normPath, OG_LOCALE, SITE_NAME, type SeoOverride } from "../lib/seo";
 
 type SiteSeoConfigLite = { headerCode: string | null; footerCode: string | null };
 
@@ -22,16 +23,23 @@ type ThemeSetting = {
   baseFontScale?: string | null;
 };
 
-type RootLoaderData = SiteSeoConfigLite & { theme: ThemeSetting | null };
+type RootLoaderData = SiteSeoConfigLite & { theme: ThemeSetting | null; seo: SeoOverride | null };
 
-async function fetchRootData(): Promise<RootLoaderData> {
-  const seoP = fetch(`${API_URL}/api/seo/config`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const themeP = fetch(`${API_URL}/api/content/theme`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const [seo, theme] = await Promise.all([seoP, themeP]);
+async function fetchRootData(pathname: string): Promise<RootLoaderData> {
+  const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const path = normPath(pathname);
+  // The admin SEO override for this exact URL (SEO → Pages) — read back by
+  // every public route's head() via buildSeoHead(). Skipped for admin pages.
+  const [config, theme, seo] = await Promise.all([
+    json(`${API_URL}/api/seo/config`),
+    json(`${API_URL}/api/content/theme`),
+    path.startsWith("/admin") ? null : json(`${API_URL}/api/seo/pages/lookup?path=${encodeURIComponent(path)}`),
+  ]);
   return {
-    headerCode: seo?.headerCode ?? null,
-    footerCode: seo?.footerCode ?? null,
+    headerCode: config?.headerCode ?? null,
+    footerCode: config?.footerCode ?? null,
     theme: theme ?? null,
+    seo: seo ?? null,
   };
 }
 
@@ -115,7 +123,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  loader: () => fetchRootData(),
+  loader: ({ location }) => fetchRootData(location.pathname),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -126,6 +134,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "The Grand Palace Indian Restaurant | Sydney CBD" },
       { property: "og:description", content: "Authentic Indian fine dining in Sydney CBD. Birthday packages, events, catering and à la carte dining at The Grand Palace." },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: SITE_NAME },
+      { property: "og:locale", content: OG_LOCALE },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "The Grand Palace Indian Restaurant | Sydney CBD" },
       { name: "twitter:description", content: "Authentic Indian fine dining in Sydney CBD. Birthday packages, events, catering and à la carte dining at The Grand Palace." },

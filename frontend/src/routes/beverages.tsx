@@ -12,6 +12,7 @@ import aLaCarteHeroImg from "@/assets/hero-menu-spread.jpg";
 import setMenuHeroImg  from "@/assets/gallery/Hero_022-scaled.jpg";
 import lunchSpecialCardImg from "@/assets/hero-lunch-special-spread.jpg";
 import { API_URL, type MenuCategory as MenuCategoryDTO } from "@/lib/admin-api";
+import { pageHead } from "@/lib/seo";
 
 // Server-rendered — the drink list used to be a plain useQuery with no
 // loader, so the entire page (every wine/cocktail/spirit list) rendered
@@ -41,12 +42,7 @@ export const Route = createFileRoute("/beverages")({
     const [content, categories] = await Promise.all([fetchPageContent("/beverages"), fetchCategories()]);
     return { content, categories };
   },
-  head: () => ({
-    meta: [
-      { title: "Beverages — The Grand Palace" },
-      { name: "description", content: "Premium cocktails, curated wines, craft beers and fine spirits at The Grand Palace, Sydney CBD." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/beverages"),
   component: BeveragesPage,
 });
 
@@ -366,7 +362,7 @@ function BeveragesPage() {
 
       {/* ══ HERO ══ */}
       <div className="relative flex items-center justify-center text-center overflow-hidden" style={{ minHeight: "46vh" }}>
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover"
+        <img src={heroImg} alt="Cocktails and drinks at The Grand Palace bar, Sydney CBD" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover"
              fetchPriority="high" decoding="async" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(6,2,0,0.82) 0%, rgba(8,3,0,0.78) 50%, rgba(10,4,0,0.85) 100%)" }} />
         <div className="relative flex flex-col items-center gap-4 px-6 py-10">

@@ -4,6 +4,7 @@ import heroImgDefault from "@/assets/hero-guides-spread.jpg";
 import { guides, BLOG_SLUGS } from "@/lib/guidesListingData";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 import { API_URL, type Guide } from "@/lib/admin-api";
+import { pageHead } from "@/lib/seo";
 
 async function fetchAdminGuides(): Promise<Guide[]> {
   try {
@@ -20,12 +21,7 @@ export const Route = createFileRoute("/blog/")({
     const [content, adminGuides] = await Promise.all([fetchPageContent("/blog"), fetchAdminGuides()]);
     return { content, adminGuides };
   },
-  head: () => ({
-    meta: [
-      { title: "Blog — The Grand Palace Indian Restaurant Sydney" },
-      { name: "description", content: "Birthdays, events, catering and dining guides from The Grand Palace — Sydney CBD's Indian fine dining restaurant." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/blog"),
   component: BlogPage,
 });
 

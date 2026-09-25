@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
-import { api, API_URL, SITE_URL, type GalleryImage } from "@/lib/admin-api";
-import type { SeoSetting } from "@/lib/admin-api";
+import { api, API_URL, type GalleryImage } from "@/lib/admin-api";
+import { pageHead, restaurantSchema, websiteSchema } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { SimpleCaptcha, useSimpleCaptcha } from "@/components/SimpleCaptcha";
 import { MandalaDivider } from "@/components/MandalaDivider";
@@ -20,22 +20,6 @@ import venueCateringImgDefault from "@/assets/office-catering-live-final.jpg";
 import mandala from "@/assets/mandala.png";
 import type { PageContent } from "@/lib/admin-api";
 import { fetchPageContent, makeContent, useLiveContent } from "@/lib/pageContent";
-
-const DEFAULT_TITLE = "The Grand Palace — Indian Fine Dining in Sydney CBD";
-const DEFAULT_DESCRIPTION = "Grand Indian dining experience in the heart of Sydney CBD. HACCP certified, Gold Licensed. Book a table, host events, order catering.";
-
-// Proof-of-pattern for the admin SEO panel's per-page overrides — the
-// homepage is the first page wired to actually apply them. A backend hiccup
-// falls back to the hardcoded defaults, never breaks the page.
-async function fetchHomeSeo(): Promise<SeoSetting | null> {
-  try {
-    const res = await fetch(`${API_URL}/api/seo/pages/lookup?path=/`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
 
 async function fetchHomeContent(): Promise<PageContent | null> {
   try {
@@ -73,38 +57,20 @@ async function fetchHomeGalleryImages(): Promise<GalleryImage[]> {
 }
 
 async function fetchHomeLoaderData() {
-  const [seo, content, blocks, reviews, galleryImages] = await Promise.all([
-    fetchHomeSeo(),
+  const [content, blocks, reviews, galleryImages] = await Promise.all([
     fetchHomeContent(),
     fetchPageContent("/"),
     fetchHomeReviews(),
     fetchHomeGalleryImages(),
   ]);
-  return { seo, content, blocks, reviews, galleryImages };
+  return { content, blocks, reviews, galleryImages };
 }
 
 export const Route = createFileRoute("/")({
   loader: () => fetchHomeLoaderData(),
-  head: ({ loaderData }) => {
-    const seo = loaderData?.seo;
-    const title = seo?.metaTitle || DEFAULT_TITLE;
-    const description = seo?.metaDescription || DEFAULT_DESCRIPTION;
-    const meta: Record<string, string>[] = [
-      { title },
-      { name: "description", content: description },
-      { property: "og:title", content: title },
-      { property: "og:description", content: description },
-    ];
-    if (seo?.ogImage) meta.push({ property: "og:image", content: seo.ogImage });
-    // Falls back to SITE_URL rather than rendering no canonical tag at all
-    // when nothing's set in admin (Pages → SEO Settings) — every other page
-    // type (guides, blog, menu) derives its own canonical from SITE_URL
-    // directly and can never end up without one; the homepage previously
-    // could, and did, silently ship with no canonical tag for this exact
-    // reason until it was set by hand.
-    const links = [{ rel: "canonical", href: seo?.canonicalUrl || SITE_URL }];
-    return { meta, links };
-  },
+  // Title/description/OG defaults live in SITE_PAGES; SEO → Pages → Home in
+  // admin overrides them (and a custom schema there replaces these two).
+  head: (ctx) => pageHead(ctx, "/", [restaurantSchema(), websiteSchema()]),
   component: Home,
 });
 
@@ -114,7 +80,7 @@ const cms = (doc: PageContent | null | undefined, field: keyof PageContent, fall
   (doc?.[field] as string) || fallback;
 
 function Home() {
-  const { seo, content: loadedContent, blocks, reviews, galleryImages } = Route.useLoaderData();
+  const { content: loadedContent, blocks, reviews, galleryImages } = Route.useLoaderData();
   const blockContent = useLiveContent("/", blocks);
   const c = makeContent(blockContent);
   // Merges live edits posted from the admin's preview iframe on top of the
@@ -140,9 +106,6 @@ function Home() {
 
   return (
     <PageShell>
-      {seo?.schema && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seo.schema) }} />
-      )}
       {/* HERO — dark */}
       <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -408,7 +371,7 @@ function Home() {
                   Poured alongside authentic Indian food in Sydney CBD, from $18 a glass.
                 </p>
                 <div className="border-t border-palace/10 pt-4 flex gap-3">
-                  <Link to="/whats-on/$slug" params={{ slug: "indian-whisky-sydney-cbd" }} className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition">Learn More</Link>
+                  <Link to="/whats-on/$slug" params={{ slug: "indian-whisky-sydney-cbd" }} className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition">Learn More<span className="sr-only"> about Indian whisky in Sydney</span></Link>
                   <Link to="/book-a-table" className="border border-palace text-palace rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-palace hover:text-cream transition">Book Now</Link>
                 </div>
               </div>
@@ -426,7 +389,7 @@ function Home() {
                   Enjoy our $20 takeaway biryani lunch special at The Grand Palace - Indian Restaurant, Sydney.
                 </p>
                 <div className="border-t border-palace/10 pt-4 flex gap-3">
-                  <Link to="/whats-on/$slug" params={{ slug: "takeaway-biryani-lunch-special" }} className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition">Learn More</Link>
+                  <Link to="/whats-on/$slug" params={{ slug: "takeaway-biryani-lunch-special" }} className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition">Learn More<span className="sr-only"> about the $20 takeaway biryani lunch special</span></Link>
                   <a href="https://the-grand-palace-indian-restaurant.square.site/" target="_blank" rel="noreferrer" className="border border-palace text-palace rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-palace hover:text-cream transition">Order Now</a>
                 </div>
               </div>
@@ -443,7 +406,7 @@ function Home() {
                 <p className="text-palace/70 text-sm leading-relaxed mb-2">Celebrate Your Birthday in Style at The Grand Palace Sydney!</p>
                 <p className="text-saffron text-sm font-medium mb-4 flex-1">Now Offering Exclusive Celebrate Birthday Deals – From Just $150!</p>
                 <div className="border-t border-palace/10 pt-4 flex gap-3">
-                  <Link to="/whats-on/$slug" params={{ slug: "birthday-party-packages" }} className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition">Learn More</Link>
+                  <Link to="/whats-on/$slug" params={{ slug: "birthday-party-packages" }} className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition">Learn More<span className="sr-only"> about birthday party packages</span></Link>
                   <Link to="/book-a-table" className="border border-palace text-palace rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-palace hover:text-cream transition">Book Now</Link>
                 </div>
               </div>

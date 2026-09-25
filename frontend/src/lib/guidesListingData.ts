@@ -101,3 +101,10 @@ export const BLOG_SLUGS: string[] = [
   "indian-restaurant-near-town-hall-station",
   "top-5-indian-dishes-sydney",
 ];
+
+// Bundled guides that were merged into another post and are now 301'd at the
+// server (nginx) level — so no admin Redirect row exists for sitemap.xml to
+// filter on. Kept out of sitemap.xml, llms.txt and the admin SEO list.
+export const RETIRED_GUIDE_SLUGS: string[] = [
+  "corporate-catering-sydney-cbd", // → /blog/how-to-plan-office-lunch-catering-in-sydney
+];

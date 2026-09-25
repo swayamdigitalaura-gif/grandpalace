@@ -18,15 +18,11 @@ import food2Default     from "@/assets/platterbox-nonveg-live.jpg";
 import food3Default     from "@/assets/office-catering-gallery-1.jpg";
 import food4Default     from "@/assets/office-catering-gallery-2.jpg";
 import corpImgDefault   from "@/assets/gallery/Corporate_059.jpg";
+import { faqSchema, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/office-catering")({
   loader: () => fetchPageContent("/office-catering"),
-  head: () => ({
-    meta: [
-      { title: "Office Catering Sydney CBD — The Grand Palace Indian Restaurant" },
-      { name: "description", content: "Premium Indian office catering in Sydney CBD. Full-service catering to your venue, or fresh platter boxes from $75 for pickup/delivery. HACCP certified." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/office-catering", [faqSchema(faqs)]),
   component: OfficeCateringPage,
 });
 
@@ -281,7 +277,7 @@ function PlatterBoxes() {
                   <span className="text-[10px] uppercase tracking-widest text-green-400">Vegetarian</span>
                   <span className="font-display text-2xl text-gold">$75</span>
                 </div>
-                <h4 className="font-display text-lg text-cream mb-2">Veg Platter Box</h4>
+                <h3 className="font-display text-lg text-cream mb-2">Veg Platter Box</h3>
                 <p className="text-cream/50 text-[11px] mb-3">5 varieties of veg rolls</p>
                 <ul className="space-y-1">
                   {["Paneer Tikka Roll", "Malai Soya Chaap Roll", "Hara Bhara Roll", "Samosa Chaat Roll", "Mirchi Vada Roll"].map(item => (
@@ -297,7 +293,7 @@ function PlatterBoxes() {
                   <span className="text-[10px] uppercase tracking-widest text-red-400">Non-Vegetarian</span>
                   <span className="font-display text-2xl text-gold">$85</span>
                 </div>
-                <h4 className="font-display text-lg text-cream mb-2">Non-Veg Platter Box</h4>
+                <h3 className="font-display text-lg text-cream mb-2">Non-Veg Platter Box</h3>
                 <p className="text-cream/50 text-[11px] mb-3">5 varieties of non-veg rolls</p>
                 <ul className="space-y-1">
                   {["Butter Chicken Roll", "Rogan Josh Roll", "Kadhai Chicken Roll", "Chicken 65 Roll", "Seekh Kebab Roll"].map(item => (
@@ -757,7 +753,7 @@ function Gallery() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[food1, food2, food3, food4].map((src, i) => (
             <div key={i} className="rounded-xl overflow-hidden aspect-square">
-              <img src={src} alt="" loading="lazy" decoding="async"
+              <img src={src} alt={`Indian office catering food from The Grand Palace — photo ${i + 1}`} loading="lazy" decoding="async"
                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
             </div>
           ))}

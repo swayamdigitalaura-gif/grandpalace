@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { api, SITE_URL, type SeoSetting, type Redirect, type SiteSeoConfig } from "@/lib/admin-api";
+import { api, SITE_URL, type SeoSetting, type Redirect, type SiteSeoConfig, type Guide, type SitePage } from "@/lib/admin-api";
 import { SITE_PAGES } from "@/lib/sitePages";
+import { guidesContent } from "@/lib/guidesContent";
+import { BLOG_SLUGS, RETIRED_GUIDE_SLUGS } from "@/lib/guidesListingData";
+import {
+  absUrl, DEFAULT_OG_IMAGE, defaultCanonical, guideDefaults, pageDefaults, whatsOnDefaults, type SeoDefaults,
+} from "@/lib/seo";
 
 // Must be kept identical to robots[.]txt.ts's own DEFAULT_ROBOTS_TXT — not
 // imported from there directly to avoid cross-importing between file-based
@@ -118,97 +123,228 @@ function AdminSeo() {
 
 /* ───────────────────── Pages tab ───────────────────── */
 
+type SeoGroup = "Pages" | "Guides" | "Blogs" | "What's On";
+
+type SeoTarget = {
+  path: string;
+  label: string;
+  group: SeoGroup;
+  defaults: SeoDefaults;
+  /** What JSON-LD the page already outputs on its own, for the Schema tab. */
+  builtInSchema: string;
+};
+
+const GROUPS: SeoGroup[] = ["Pages", "Guides", "Blogs", "What's On"];
+
+const PAGE_SCHEMA: Record<string, string> = {
+  "/": "Restaurant (address, hours, phone, reservations) + WebSite",
+  "/contact": "Restaurant + BreadcrumbList",
+  "/book-a-table": "Restaurant reservation action + BreadcrumbList",
+  "/birthday-package": "FAQPage + BreadcrumbList",
+  "/office-catering": "FAQPage + BreadcrumbList",
+  "/venue-catering": "FAQPage + BreadcrumbList",
+  "/venue-for-hire": "FAQPage + BreadcrumbList",
+};
+
+// Title 30–60 and description 120–160 characters are what search results show in full.
+const TITLE_RANGE = [30, 60] as const;
+const DESC_RANGE = [120, 160] as const;
+const inRange = (n: number, [lo, hi]: readonly [number, number]) => n >= lo && n <= hi;
+
+function useSeoTargets() {
+  const guidesQ = useQuery({ queryKey: ["admin-guides"], queryFn: () => api.get<Guide[]>("/api/guides/admin/all") });
+  const pagesQ = useQuery({ queryKey: ["admin-whats-on-pages"], queryFn: () => api.get<SitePage[]>("/api/pages/admin/all") });
+
+  const targets: SeoTarget[] = SITE_PAGES.map((p) => ({
+    path: p.path,
+    label: p.label,
+    group: "Pages",
+    defaults: pageDefaults(p.path),
+    builtInSchema: PAGE_SCHEMA[p.path] ?? "BreadcrumbList",
+  }));
+
+  // Same merge as sitemap.xml: admin guides first, then any bundled guide
+  // that hasn't been moved into the database.
+  const dbGuides = guidesQ.data ?? [];
+  const bySlug = new Map<string, { slug: string; title: string; metaTitle: string; metaDescription: string; heroImage?: string | null; sections?: { image?: string | null }[]; published?: boolean }>();
+  for (const g of Object.values(guidesContent)) bySlug.set(g.slug, g);
+  for (const g of dbGuides) bySlug.set(g.slug, g);
+  for (const slug of RETIRED_GUIDE_SLUGS) bySlug.delete(slug);
+  const blogSlugs = new Set(BLOG_SLUGS);
+  for (const g of bySlug.values()) {
+    if (g.published === false) continue;
+    const isBlog = blogSlugs.has(g.slug);
+    targets.push({
+      path: `${isBlog ? "/blog" : "/guides"}/${g.slug}`,
+      label: g.title,
+      group: isBlog ? "Blogs" : "Guides",
+      defaults: guideDefaults(g),
+      builtInSchema: "Article + FAQPage (if the post has FAQs) + BreadcrumbList + Restaurant — from the article template",
+    });
+  }
+
+  for (const p of pagesQ.data ?? []) {
+    if (!p.published) continue;
+    targets.push({
+      path: `/whats-on/${p.slug}`,
+      label: p.title,
+      group: "What's On",
+      defaults: whatsOnDefaults(p),
+      builtInSchema: "BreadcrumbList",
+    });
+  }
+  return { targets, isLoading: guidesQ.isLoading || pagesQ.isLoading };
+}
+
 function PagesTab() {
-  const [editingPath, setEditingPath] = useState<string | null>(null);
+  const [editing, setEditing] = useState<SeoTarget | null>(null);
+  const [group, setGroup] = useState<SeoGroup | "All">("All");
+  const [search, setSearch] = useState("");
+  const [onlyIssues, setOnlyIssues] = useState(false);
   const { data: settings } = useQuery({
     queryKey: ["admin-seo-pages"],
     queryFn: () => api.get<SeoSetting[]>("/api/seo/pages"),
   });
   const byPath = new Map((settings ?? []).map((s) => [s.path, s]));
+  const { targets, isLoading } = useSeoTargets();
+
+  const rows = targets.map((t) => {
+    const s = byPath.get(t.path);
+    const title = s?.metaTitle || t.defaults.title;
+    const desc = s?.metaDescription || t.defaults.description;
+    const issues = [
+      !inRange(title.length, TITLE_RANGE) && `Title ${title.length} chars`,
+      !inRange(desc.length, DESC_RANGE) && `Description ${desc.length} chars`,
+    ].filter(Boolean) as string[];
+    return { t, s, title, issues };
+  });
+  const q = search.trim().toLowerCase();
+  const visible = rows.filter(({ t, title, issues }) =>
+    (group === "All" || t.group === group) &&
+    (!onlyIssues || issues.length > 0) &&
+    (!q || t.path.toLowerCase().includes(q) || t.label.toLowerCase().includes(q) || title.toLowerCase().includes(q)));
 
   return (
     <>
       <p className="text-[12px] text-stone-500 mb-4">
-        Only <strong>Home</strong> currently applies these overrides live on the site — the rest save here as groundwork for a fast follow-up.
+        Every page, guide, blog post and What's On page is listed here, and whatever you save goes <strong>live on that page</strong>.
+        Each field already shows the page's current SEO value. Edit it and save to override. Clear a field and save to go back to the default.
       </p>
-      <div className="space-y-2">
-        {SITE_PAGES.map((p) => {
-          const setting = byPath.get(p.path);
-          const isLive = p.path === "/";
-          return (
-            <div key={p.path} className="bg-white rounded-xl border border-stone-200 p-3.5 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold" style={{ color: "#1a0e00" }}>{p.label}</span>
-                  {isLive && (
-                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: "rgba(74,140,58,0.12)", color: "#4a8c3a" }}>
-                      Live
-                    </span>
-                  )}
-                  {setting && (
-                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: "rgba(200,140,10,0.12)", color: "#a05a0a" }}>
-                      Customised
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-stone-400 truncate">{p.path}</p>
-              </div>
-              <button onClick={() => setEditingPath(p.path)} className="btn-gold !text-[11px] !px-3 !py-1.5 shrink-0">
-                SEO Settings
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      {editingPath && (
-        <SeoSettingsModal
-          path={editingPath}
-          pageLabel={SITE_PAGES.find((p) => p.path === editingPath)?.label ?? editingPath}
-          existing={byPath.get(editingPath)}
-          onClose={() => setEditingPath(null)}
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {(["All", ...GROUPS] as const).map((g) => (
+          <button
+            key={g}
+            onClick={() => setGroup(g)}
+            className="px-3 py-1 rounded-full text-[11px] font-semibold"
+            style={group === g ? { background: "#1a0e00", color: "#fff" } : { background: "#fff", color: "#7a5020", border: "1px solid rgba(200,140,30,0.25)" }}
+          >
+            {g} <span className="opacity-60">{g === "All" ? rows.length : rows.filter((r) => r.t.group === g).length}</span>
+          </button>
+        ))}
+        <label className="flex items-center gap-1.5 text-[11px] text-stone-600 ml-1">
+          <input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} />
+          Only show length issues ({rows.filter((r) => r.issues.length).length})
+        </label>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by title or URL…"
+          className="flex-1 min-w-[180px] rounded-lg px-3 py-1.5 text-sm bg-white outline-none border border-stone-200 focus:border-amber-500"
         />
+      </div>
+
+      {isLoading && <p className="text-sm text-stone-500 mb-2">Loading guides and What's On pages…</p>}
+
+      <div className="space-y-2">
+        {visible.map(({ t, s, title, issues }) => (
+          <div key={t.path} className="bg-white rounded-xl border border-stone-200 p-3.5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-semibold truncate" style={{ color: "#1a0e00" }}>{t.label}</span>
+                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: "rgba(120,120,120,0.1)", color: "#707070" }}>
+                  {t.group}
+                </span>
+                {s && (
+                  <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: "rgba(200,140,10,0.12)", color: "#a05a0a" }}>
+                    Customised
+                  </span>
+                )}
+                {issues.map((i) => (
+                  <span key={i} className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: "rgba(192,57,43,0.1)", color: "#c0392b" }}>
+                    {i}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-stone-400 truncate">{t.path} · {title}</p>
+            </div>
+            <button onClick={() => setEditing(t)} className="btn-gold !text-[11px] !px-3 !py-1.5 shrink-0">
+              SEO Settings
+            </button>
+          </div>
+        ))}
+        {!isLoading && visible.length === 0 && <p className="text-sm text-stone-400 italic">Nothing matches.</p>}
+      </div>
+
+      {editing && (
+        <SeoSettingsModal target={editing} existing={byPath.get(editing.path)} onClose={() => setEditing(null)} />
       )}
     </>
   );
 }
 
+function Counter({ n, range }: { n: number; range: readonly [number, number] }) {
+  return (
+    <span className="float-right normal-case font-semibold" style={{ color: inRange(n, range) ? "#3f7d58" : "#c0392b" }}>
+      {n} / {range[0]}–{range[1]}
+    </span>
+  );
+}
+
 function SeoSettingsModal({
-  path, pageLabel, existing, onClose,
+  target, existing, onClose,
 }: {
-  path: string;
-  pageLabel: string;
+  target: SeoTarget;
   existing?: SeoSetting;
   onClose: () => void;
 }) {
+  const { path, label, defaults: d } = target;
   const queryClient = useQueryClient();
   const [subTab, setSubTab] = useState<"meta" | "schema" | "head">("meta");
+  const defaultImage = absUrl(d.image || DEFAULT_OG_IMAGE);
+  const defaultCanon = defaultCanonical(path);
+  // Pre-filled with what's live now: the saved override if there is one,
+  // otherwise the page's built-in default.
   const [form, setForm] = useState({
-    metaTitle: existing?.metaTitle ?? "",
-    metaDescription: existing?.metaDescription ?? "",
-    focusKeywords: existing?.focusKeywords ?? "",
-    ogImage: existing?.ogImage ?? "",
-    canonicalUrl: existing?.canonicalUrl ?? "",
+    metaTitle: existing?.metaTitle || d.title,
+    metaDescription: existing?.metaDescription || d.description,
+    focusKeywords: existing?.focusKeywords || d.keywords || "",
+    ogImage: existing?.ogImage || defaultImage,
+    canonicalUrl: existing?.canonicalUrl || defaultCanon,
     schema: existing?.schema ? JSON.stringify(existing.schema, null, 2) : "",
     headTags: existing?.headTags ?? "",
   });
   const [schemaError, setSchemaError] = useState("");
 
+  // Only what differs from the default is stored, so a page keeps picking up
+  // improvements to its built-in defaults for every field left untouched.
+  const diff = (v: string, def: string) => (v.trim() && v.trim() !== def.trim() ? v.trim() : null);
+
   const save = useMutation({
     mutationFn: () => {
-      let schemaJson: unknown = undefined;
-      if (form.schema.trim()) {
-        schemaJson = JSON.parse(form.schema);
-      }
-      return api.put("/api/seo/pages", {
+      const body = {
         path,
-        metaTitle: form.metaTitle || null,
-        metaDescription: form.metaDescription || null,
-        focusKeywords: form.focusKeywords || null,
-        ogImage: form.ogImage || null,
-        canonicalUrl: form.canonicalUrl || null,
-        schema: schemaJson ?? null,
-        headTags: form.headTags || null,
-      });
+        metaTitle: diff(form.metaTitle, d.title),
+        metaDescription: diff(form.metaDescription, d.description),
+        focusKeywords: diff(form.focusKeywords, d.keywords || ""),
+        ogImage: diff(form.ogImage, defaultImage),
+        canonicalUrl: diff(form.canonicalUrl, defaultCanon),
+        schema: form.schema.trim() ? JSON.parse(form.schema) : null,
+        headTags: form.headTags.trim() || null,
+      };
+      const anything = Object.entries(body).some(([k, v]) => k !== "path" && v !== null);
+      if (!anything) return existing ? api.delete(`/api/seo/pages?path=${encodeURIComponent(path)}`) : Promise.resolve(null);
+      return api.put("/api/seo/pages", body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-seo-pages"] });
@@ -238,12 +374,18 @@ function SeoSettingsModal({
     },
   });
 
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const displayUrl = form.canonicalUrl.replace(/^https?:\/\//, "").replace(/\/$/, "").replace(/\//g, " › ");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,12,0,0.5)" }} onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 border-b border-stone-100 sticky top-0 bg-white z-10">
-          <h2 className="font-display text-xl" style={{ color: "#1a0e00" }}>SEO Settings — {pageLabel}</h2>
-          <p className="text-[11px] text-stone-400 mt-0.5">{path}</p>
+          <h2 className="font-display text-xl" style={{ color: "#1a0e00" }}>SEO Settings — {label}</h2>
+          <p className="text-[11px] text-stone-400 mt-0.5">
+            <a href={path} target="_blank" rel="noreferrer" className="underline">{path}</a> · {target.group}
+          </p>
           <div className="flex gap-1 mt-3">
             {(["meta", "schema", "head"] as const).map((t) => (
               <button
@@ -261,47 +403,62 @@ function SeoSettingsModal({
         <div className="p-5 space-y-4">
           {subTab === "meta" && (
             <>
-              <div>
-                <label className={labelCls} style={labelStyle}>
-                  Meta Title <span className="float-right normal-case font-normal text-stone-400">{form.metaTitle.length}/60</span>
-                </label>
-                <input className={inputCls} style={inputStyle} value={form.metaTitle} maxLength={70}
-                  onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))} placeholder="SEO title (50-60 chars)" />
+              <div className="rounded-xl border border-stone-200 p-3.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 mb-1.5">Google preview</p>
+                <p className="text-[12px] text-stone-600 truncate">{displayUrl}</p>
+                <p className="text-[18px] leading-snug truncate" style={{ color: "#1a0dab" }}>{form.metaTitle || d.title}</p>
+                <p className="text-[13px] text-stone-600 leading-snug line-clamp-2">{form.metaDescription || d.description}</p>
               </div>
               <div>
                 <label className={labelCls} style={labelStyle}>
-                  Meta Description <span className="float-right normal-case font-normal text-stone-400">{form.metaDescription.length}/160</span>
+                  Meta Title <Counter n={form.metaTitle.length} range={TITLE_RANGE} />
                 </label>
-                <textarea className={`${inputCls} resize-none`} style={inputStyle} rows={3} value={form.metaDescription} maxLength={180}
-                  onChange={(e) => setForm((f) => ({ ...f, metaDescription: e.target.value }))} placeholder="SEO description (150-160 chars)" />
+                <input className={inputCls} style={inputStyle} value={form.metaTitle} maxLength={80} onChange={set("metaTitle")} />
+                <p className="text-[11px] text-stone-400 mt-1">Main keyword first, brand at the end. Default: {d.title}</p>
+              </div>
+              <div>
+                <label className={labelCls} style={labelStyle}>
+                  Meta Description <Counter n={form.metaDescription.length} range={DESC_RANGE} />
+                </label>
+                <textarea className={`${inputCls} resize-none`} style={inputStyle} rows={3} value={form.metaDescription} maxLength={200} onChange={set("metaDescription")} />
+                <p className="text-[11px] text-stone-400 mt-1">Say what's on the page and end with a call to action (Book, Order, Call).</p>
               </div>
               <div>
                 <label className={labelCls} style={labelStyle}>Focus Keywords</label>
-                <input className={inputCls} style={inputStyle} value={form.focusKeywords}
-                  onChange={(e) => setForm((f) => ({ ...f, focusKeywords: e.target.value }))} placeholder="keyword1, keyword2, keyword3" />
+                <input className={inputCls} style={inputStyle} value={form.focusKeywords} onChange={set("focusKeywords")} placeholder="keyword1, keyword2, keyword3" />
+                <p className="text-[11px] text-stone-400 mt-1">The searches this page should rank for. Use the first one in the title, description and H1.</p>
               </div>
               <div>
-                <label className={labelCls} style={labelStyle}>OG Image URL</label>
-                <input className={inputCls} style={inputStyle} value={form.ogImage}
-                  onChange={(e) => setForm((f) => ({ ...f, ogImage: e.target.value }))} placeholder="https://... (1200x630px for social sharing)" />
+                <label className={labelCls} style={labelStyle}>OG Image URL (social share preview)</label>
+                <input className={inputCls} style={inputStyle} value={form.ogImage} onChange={set("ogImage")} />
+                {form.ogImage && (
+                  <img src={form.ogImage} alt="" className="mt-2 rounded-lg border border-stone-200 w-full max-w-xs aspect-[1200/630] object-cover" />
+                )}
+                <p className="text-[11px] text-stone-400 mt-1">Shown on WhatsApp, Facebook, LinkedIn and X. Best at 1200×630px, under 300 KB.</p>
               </div>
               <div>
                 <label className={labelCls} style={labelStyle}>Canonical URL</label>
-                <input className={inputCls} style={inputStyle} value={form.canonicalUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, canonicalUrl: e.target.value }))} placeholder="Leave blank to use default." />
-                <p className="text-[11px] text-stone-400 mt-1">Set only if duplicate content exists elsewhere.</p>
+                <input className={inputCls} style={inputStyle} value={form.canonicalUrl} onChange={set("canonicalUrl")} />
+                <p className="text-[11px] text-stone-400 mt-1">Leave as this page's own URL unless the same content lives at another address.</p>
               </div>
             </>
           )}
 
           {subTab === "schema" && (
             <div>
-              <label className={labelCls} style={labelStyle}>Custom JSON-LD Schema</label>
+              <div className="rounded-lg p-3 mb-3 text-[12px]" style={{ background: "#fdf6e4", color: "#7a5020" }}>
+                <strong>Already on this page automatically:</strong> {target.builtInSchema}
+              </div>
+              <label className={labelCls} style={labelStyle}>Custom JSON-LD Schema (optional)</label>
               <textarea className={`${inputCls} resize-none font-mono text-[12px]`} style={inputStyle} rows={12} value={form.schema}
                 onChange={(e) => { setForm((f) => ({ ...f, schema: e.target.value })); setSchemaError(""); }}
-                placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "Restaurant",\n  ...\n}'} />
+                placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "Event",\n  ...\n}'} />
               {schemaError && <p className="text-[11px] text-red-500 mt-1">{schemaError}</p>}
-              <p className="text-[11px] text-stone-400 mt-1">Paste raw JSON-LD. Leave blank to use the page's built-in schema.</p>
+              <p className="text-[11px] text-stone-400 mt-1">
+                {target.group === "Pages"
+                  ? "Replaces this page's own schema above (the breadcrumb is always kept). Leave blank to keep the built-in one."
+                  : "Added alongside the built-in schema above. Leave blank if you don't need extra."}
+              </p>
             </div>
           )}
 
@@ -309,10 +466,10 @@ function SeoSettingsModal({
             <div>
               <label className={labelCls} style={labelStyle}>Extra Head Tags</label>
               <textarea className={`${inputCls} resize-none font-mono text-[12px]`} style={inputStyle} rows={10} value={form.headTags}
-                onChange={(e) => setForm((f) => ({ ...f, headTags: e.target.value }))}
+                onChange={set("headTags")}
                 placeholder={'<meta name="robots" content="noindex" />'} />
-              <p className="text-[11px] text-amber-600 mt-1">
-                ⚠ Saved here, but not yet applied to the live page — this is groundwork for a follow-up build.
+              <p className="text-[11px] text-stone-400 mt-1">
+                Applied live to this page only. Supports &lt;meta&gt; and &lt;link&gt; tags; put scripts in Header &amp; Footer Code instead.
               </p>
             </div>
           )}

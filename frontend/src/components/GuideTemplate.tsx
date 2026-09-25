@@ -8,8 +8,10 @@ import {
 } from "lucide-react";
 import mandala from "@/assets/mandala.png";
 import type { GuideContent, GuideComparisonTable } from "@/lib/guidesContent";
-import { REVIEWER, GUIDE_AUTHOR, RESTAURANT_ADDRESS, RESTAURANT_PHONE_DISPLAY, RESTAURANT_PHONE_TEL, RESTAURANT_EMAIL, guidesContent } from "@/lib/guidesContent";
+import { REVIEWER, GUIDE_AUTHOR, RESTAURANT_ADDRESS, RESTAURANT_PHONE_DISPLAY, RESTAURANT_PHONE_TEL, RESTAURANT_EMAIL } from "@/lib/guidesContent";
 import { SITE_URL as CURRENT_LIVE_SITE_URL } from "@/lib/admin-api";
+import { BLOG_SLUGS } from "@/lib/guidesListingData";
+import { RelatedGuides } from "@/components/RelatedGuides";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -63,7 +65,10 @@ function extractHowToSteps(guide: GuideContent): string[] | null {
 }
 
 export function buildSchema(guide: GuideContent) {
-  const url = `${CANONICAL_BASE_URL}/guides/${guide.slug}`;
+  // Blog posts share this template but live under /blog — their schema URLs
+  // must match their real (canonical) address, not redirect via /guides.
+  const isBlog = BLOG_SLUGS.includes(guide.slug);
+  const url = `${CANONICAL_BASE_URL}/${isBlog ? "blog" : "guides"}/${guide.slug}`;
 
   const articleSchema = {
     "@context": "https://schema.org",
@@ -77,7 +82,7 @@ export function buildSchema(guide: GuideContent) {
     publisher: {
       "@type": "Organization",
       name: "The Grand Palace Indian Restaurant",
-      logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.png` },
+      logo: { "@type": "ImageObject", url: `${CANONICAL_BASE_URL}/favicon.png` },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
   };
@@ -99,7 +104,7 @@ export function buildSchema(guide: GuideContent) {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: CANONICAL_BASE_URL },
-      { "@type": "ListItem", position: 2, name: "Guides", item: `${CANONICAL_BASE_URL}/guides` },
+      { "@type": "ListItem", position: 2, name: isBlog ? "Blog" : "Guides", item: `${CANONICAL_BASE_URL}/${isBlog ? "blog" : "guides"}` },
       { "@type": "ListItem", position: 3, name: guide.title, item: url },
     ],
   };
@@ -141,6 +146,30 @@ export function buildSchema(guide: GuideContent) {
   return [articleSchema, faqSchema, howToSchema, breadcrumbSchema, restaurantSchema].filter(Boolean);
 }
 
+// Old WordPress-era paths still found in article copy, mapped to where they
+// live now so those links don't bounce through a redirect.
+const LEGACY_PATHS: Record<string, string> = {
+  "/menu/beverages": "/beverages",
+  "/menu/set-menu": "/set-menu",
+  "/menu/lunch-special-set-menu": "/lunch-special",
+};
+
+/** Links in article copy that point at this site — written as a full
+ *  (often www / trailing-slash / old-path) URL, or as /guides/<slug> for a
+ *  post that now lives under /blog — resolved to the page's real internal
+ *  path. Returns null for genuinely external links. */
+function internalHref(href: string): string | null {
+  const own = href.match(/^https?:\/\/(?:www\.)?thegrandpalace\.com\.au(\/[^?#]*)?([?#].*)?$/i);
+  if (!own && !href.startsWith("/")) return null;
+  let path = own ? own[1] || "/" : href.replace(/[?#].*$/, "");
+  const suffix = own ? own[2] ?? "" : href.slice(path.length);
+  if (path.length > 1) path = path.replace(/\/+$/, "");
+  path = LEGACY_PATHS[path] ?? path;
+  const guide = path.match(/^\/guides\/([^/]+)$/);
+  if (guide && BLOG_SLUGS.includes(guide[1])) path = `/blog/${guide[1]}`;
+  return path + suffix;
+}
+
 /** Renders "[label](href)" markdown-style links as real internal (Link) or
  *  external (<a>) anchors, "**text**" as a bold/emphasised inline tag,
  *  "{{color:#hex}}text{{/color}}" as a custom-coloured span, and
@@ -174,7 +203,7 @@ export function renderRich(text: string): ReactNode[] {
           {label}
         </a>
       );
-    } else if (href.startsWith("http")) {
+    } else if (href.startsWith("http") && !internalHref(href)) {
       parts.push(
         <a key={i++} href={href} target="_blank" rel="noreferrer" className="text-saffron underline decoration-saffron/30 hover:text-gold font-medium">
           {label}
@@ -182,7 +211,7 @@ export function renderRich(text: string): ReactNode[] {
       );
     } else {
       parts.push(
-        <Link key={i++} to={href} className="text-saffron underline decoration-saffron/30 hover:text-gold font-medium">
+        <Link key={i++} to={internalHref(href) ?? href} className="text-saffron underline decoration-saffron/30 hover:text-gold font-medium">
           {label}
         </Link>
       );
@@ -249,8 +278,8 @@ export function renderBlockText(text: string, pClassName: string, keyPrefix = ""
     if (h2) { out.push(<h2 key={`${keyPrefix}h-${key++}`} className="font-display text-lg md:text-xl text-palace mt-5 mb-2 first:mt-0">{renderRich(h2[1])}</h2>); continue; }
     const h3 = line.match(/^###\s+(.+)/);
     if (h3) { out.push(<h3 key={`${keyPrefix}h-${key++}`} className="font-display text-base md:text-lg text-palace mt-4 mb-1.5 first:mt-0">{renderRich(h3[1])}</h3>); continue; }
-    const img = line.match(/^\{\{image:([^}]+)\}\}$/);
-    if (img) { out.push(<img key={`${keyPrefix}img-${key++}`} src={img[1]} alt="" loading="lazy" decoding="async" className="w-full rounded-xl my-3 object-cover" />); continue; }
+    const img = line.match(/^\{\{image:([^}|]+)(?:\|([^}]+))?\}\}$/);
+    if (img) { out.push(<img key={`${keyPrefix}img-${key++}`} src={img[1].trim()} alt={img[2]?.trim() || "The Grand Palace Indian Restaurant, Sydney CBD"} loading="lazy" decoding="async" className="w-full rounded-xl my-3 object-cover" />); continue; }
     out.push(<p key={`${keyPrefix}p-${key++}`} className={pClassName}>{renderRich(line)}</p>);
   }
   flushBullets();
@@ -709,9 +738,6 @@ function groupSections(sections: import("@/lib/guidesContent").GuideSection[]): 
 
 export function GuideTemplate({ guide }: { guide: GuideContent }) {
   const schemas = buildSchema(guide);
-  const related = guide.relatedSlugs
-    .map((slug) => guidesContent[slug])
-    .filter((g): g is GuideContent => Boolean(g));
 
   return (
     <PageShell crumbs={[{ label: "Guides", to: "/guides" }, { label: `${guide.tag} Guides`, to: "/guides" }, { label: guide.title }]}>
@@ -965,19 +991,7 @@ export function GuideTemplate({ guide }: { guide: GuideContent }) {
             </div>
 
             {/* Related guides */}
-            {related.length > 0 && (
-              <div>
-                <h3 className="font-display text-lg text-palace mb-4">Related Guides</h3>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  {related.map((g) => (
-                    <Link key={g.slug} to="/guides/$slug" params={{ slug: g.slug }}
-                          className="group rounded-xl border border-stone-200 bg-white p-4 hover:border-saffron/40 hover:-translate-y-0.5 transition-all">
-                      <p className="text-[13px] font-semibold text-stone-800 leading-snug group-hover:text-amber-800 transition">{g.title}</p>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
+            <RelatedGuides guide={guide} />
         </div>
       </section>
 

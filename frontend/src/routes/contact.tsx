@@ -9,15 +9,11 @@ import { useSiteImage } from "@/lib/useSiteImage";
 import { useSiteToggle } from "@/lib/useSiteToggle";
 import { api } from "@/lib/admin-api";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
+import { restaurantSchema, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/contact")({
   loader: () => fetchPageContent("/contact"),
-  head: () => ({
-    meta: [
-      { title: "Contact Us — The Grand Palace Indian Restaurant Sydney" },
-      { name: "description", content: "Contact The Grand Palace Indian Restaurant in Sydney CBD. Call (02) 8021 7696 or email bookings@thegrandpalace.com.au. Basement, 261 George Street." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/contact", [restaurantSchema()]),
   component: ContactPage,
 });
 
@@ -86,7 +82,7 @@ function ContactPage() {
     <PageShell crumbs={[{ label: "Contact" }]}>
       {/* Hero */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" />
+        <img src={heroImg} alt="The Grand Palace Indian restaurant at 261 George Street, Sydney CBD" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom,rgba(6,2,0,0.6),rgba(8,3,0,0.9))" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
           <p data-tgp-key="hero.kicker" className="text-[11px] tracking-[0.45em] uppercase font-bold" style={{ color: "#f5c14a", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>{c("hero.kicker", "The Grand Palace · Sydney CBD")}</p>

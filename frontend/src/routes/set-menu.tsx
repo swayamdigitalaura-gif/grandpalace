@@ -24,18 +24,14 @@ import { useSiteToggle } from "@/lib/useSiteToggle";
 import aLaCarteCardImg   from "@/assets/hero-menu-spread.jpg";
 import beveragesHeroImg  from "@/assets/hero-beverages-wines.jpg";
 import lunchSpecialCardImg from "@/assets/hero-lunch-special-spread.jpg";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/set-menu")({
   loader: async () => {
     const [content, rawCategories] = await Promise.all([fetchPageContent("/set-menu"), fetchCategories()]);
     return { content, rawCategories };
   },
-  head: () => ({
-    meta: [
-      { title: "Set Menu — The Grand Palace" },
-      { name: "description", content: "Three curated banquets at The Grand Palace, Sydney CBD — Vegetarian $65, Non-Vegetarian $70, and TGP Special $95 per person." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/set-menu"),
   component: SetMenuPage,
 });
 
@@ -129,7 +125,7 @@ function SetMenuPage() {
 
       {/* ── Hero — identical height/style to Beverages ── */}
       <div className="relative flex items-center justify-center text-center overflow-hidden" style={{ minHeight: "46vh" }}>
-        <img src={g1} alt="" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover" fetchPriority="high" decoding="async" />
+        <img src={g1} alt="Indian set menu banquet at The Grand Palace, Sydney CBD" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover" fetchPriority="high" decoding="async" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(6,2,0,0.82) 0%, rgba(8,3,0,0.78) 50%, rgba(10,4,0,0.85) 100%)" }} />
         <div className="relative flex flex-col items-center gap-4 px-6 py-10">
           <p className="text-[9px] tracking-[0.7em] uppercase font-bold" style={{ color: "#f5c14a", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>

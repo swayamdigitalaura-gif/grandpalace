@@ -7,6 +7,7 @@ import { API_URL, type SitePage } from "@/lib/admin-api";
 
 import heroImgDefault from "@/assets/hero-whats-on-spread.jpg";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
+import { pageHead } from "@/lib/seo";
 
 // The card grid used to be a plain useQuery with no loader, so it was
 // always empty during SSR — crawlers/social previews saw an empty "What's
@@ -27,12 +28,7 @@ export const Route = createFileRoute("/whats-on/")({
     const [content, pages] = await Promise.all([fetchPageContent("/whats-on"), fetchCards()]);
     return { content, pages };
   },
-  head: () => ({
-    meta: [
-      { title: "What's On — The Grand Palace Indian Restaurant Sydney" },
-      { name: "description", content: "Latest offers, deals and events at The Grand Palace, Sydney CBD. $20 Takeaway Biryani, Birthday Packages, Buy 3 Get 1 Free Cocktails & more." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/whats-on"),
   component: WhatsOnPage,
 });
 
@@ -71,7 +67,7 @@ function WhatsOnPage() {
     <PageShell crumbs={[{ label: "What's On" }]}>
       {/* Hero */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" decoding="async" />
+        <img src={heroImg} alt="Offers and events at The Grand Palace, Sydney CBD" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" decoding="async" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom,rgba(6,2,0,0.72),rgba(8,3,0,0.88))" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
           <p className="text-[11px] tracking-[0.45em] uppercase font-bold" style={{ color: "#f5c14a", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>The Grand Palace · Sydney CBD</p>
@@ -118,14 +114,14 @@ function WhatsOnPage() {
                 )}
 
                 <div className="p-5 flex flex-col flex-1">
-                  <h3 className="font-display text-xl text-stone-900 leading-snug mb-2">{card.title}</h3>
+                  <h2 className="font-display text-xl text-stone-900 leading-snug mb-2">{card.title}</h2>
                   <p className="text-amber-700 text-[13px] font-semibold leading-snug mb-2">{card.sub}</p>
                   <p className="text-stone-500 text-[13px] leading-relaxed mb-5 flex-1">{card.desc}</p>
                   <div className="border-t border-stone-100 pt-4 flex items-center gap-2">
                     {card.learnHref && (
                       <Link to={card.learnHref}
                         className="flex-1 text-center text-[12px] font-bold uppercase tracking-wider py-2.5 rounded-lg border border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-white transition">
-                        Learn More
+                        Learn More<span className="sr-only"> about {card.title}</span>
                       </Link>
                     )}
                     {card.bookExternal ? (

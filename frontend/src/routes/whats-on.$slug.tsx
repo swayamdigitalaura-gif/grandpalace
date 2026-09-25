@@ -1,7 +1,8 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { WhatsOnSimpleTemplate } from "@/components/WhatsOnSimpleTemplate";
-import { renderRich, renderBlockText, CANONICAL_BASE_URL } from "@/components/GuideTemplate";
+import { renderRich, renderBlockText } from "@/components/GuideTemplate";
 import { API_URL, type SitePage } from "@/lib/admin-api";
+import { buildSeoHead, whatsOnDefaults } from "@/lib/seo";
 
 // Server-rendered like every other content page (guides, blog) — this used
 // to be a bare useQuery with no loader, so the SSR response was always
@@ -20,26 +21,10 @@ export const Route = createFileRoute("/whats-on/$slug")({
     if (!page) throw notFound();
     return page;
   },
-  head: ({ loaderData }) => {
-    if (!loaderData) return { meta: [] };
-    const canonical = `${CANONICAL_BASE_URL}/whats-on/${loaderData.slug}`;
-    const ogImage = loaderData.heroImage || `${CANONICAL_BASE_URL}/site-image-defaults/about-hero.jpg`;
-    return {
-      meta: [
-        { title: `${loaderData.title} — The Grand Palace` },
-        { name: "description", content: loaderData.subtitle },
-        { property: "og:title", content: loaderData.title },
-        { property: "og:description", content: loaderData.subtitle },
-        { property: "og:type", content: "website" },
-        { property: "og:url", content: canonical },
-        { property: "og:image", content: ogImage },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: loaderData.title },
-        { name: "twitter:description", content: loaderData.subtitle },
-        { name: "twitter:image", content: ogImage },
-      ],
-      links: [{ rel: "canonical", href: canonical }],
-    };
+  head: (ctx) => {
+    const page = ctx.loaderData;
+    if (!page) return { meta: [] };
+    return buildSeoHead(ctx, `/whats-on/${page.slug}`, whatsOnDefaults(page));
   },
   component: WhatsOnPage,
 });
