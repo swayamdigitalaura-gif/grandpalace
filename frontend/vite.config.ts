@@ -39,6 +39,9 @@ export default defineConfig({
     // instead of cross-domain — modern browsers (Chrome/Edge/Firefox) now
     // block cross-domain "third-party" cookies by default, which broke
     // admin login entirely once that rollout reached this project.
+    // @ts-expect-error -- routeRules is a real Nitro option that the lovable
+    // wrapper's nitro type leaves out; it's passed straight through to Nitro
+    // at runtime (the /api proxy and cache headers below are live).
     routeRules: {
       "/api/**": { proxy: `${BACKEND_URL}/api/**` },
       // Every page is server-rendered from live database content (menus,

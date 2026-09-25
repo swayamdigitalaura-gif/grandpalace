@@ -108,7 +108,7 @@ export function WhatsOnSimpleTemplate({ title, subtitle, heroImage, heroVideo, g
           <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {galleryImages.map((src, i) => (
               <div key={i} className="rounded-xl overflow-hidden aspect-[4/3] border border-stone-200">
-                <img src={src} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img src={src} alt={`${title} at The Grand Palace — photo ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
@@ -163,7 +163,7 @@ export function WhatsOnSimpleTemplate({ title, subtitle, heroImage, heroVideo, g
                           {sec.intro}
                         </span>
                       )}
-                      <h3 className="font-display text-xl md:text-2xl text-stone-900">{sec.heading}</h3>
+                      <h2 className="font-display text-xl md:text-2xl text-stone-900">{sec.heading}</h2>
                     </div>
                     {sec.priceTag && (
                       <span className="font-display text-lg px-4 py-1.5 rounded-full text-white flex-shrink-0 shadow-sm"

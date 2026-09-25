@@ -20,15 +20,11 @@ import food3    from "@/assets/platter-box/BoxedCatering_05.jpg";
 import food4    from "@/assets/office-catering-gallery-1.jpg";
 import int1     from "@/assets/food-real/mains-rara-mutton.jpg";
 import int2     from "@/assets/food-real/entree-tandoori-salmon.jpg";
+import { faqSchema, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/venue-catering")({
   loader: () => fetchPageContent("/venue-catering"),
-  head: () => ({
-    meta: [
-      { title: "Venue Catering Sydney — The Grand Palace Indian Restaurant" },
-      { name: "description", content: "Luxury Indian venue catering across Sydney & NSW. Elegant canapés to multi-course banquets. HACCP certified. Engagements, weddings, birthdays and more." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/venue-catering", [faqSchema(faqs.filter((f) => f.q !== "What is the minimum spend?"))]),
   component: VenueCateringPage,
 });
 
@@ -301,7 +297,7 @@ function FoodGallery() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {[food1, food2, int1, food3, food4, int2].map((src, i) => (
             <div key={i} className="rounded-xl overflow-hidden aspect-[4/3]">
-              <img src={src} alt="" loading="lazy" decoding="async"
+              <img src={src} alt={`Indian venue catering by The Grand Palace — photo ${i + 1}`} loading="lazy" decoding="async"
                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
             </div>
           ))}

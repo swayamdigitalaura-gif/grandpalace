@@ -6,6 +6,7 @@ import { useSiteImage } from "@/lib/useSiteImage";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 
 import heroImgDefault from "@/assets/hero-gallery-spread.jpg";
+import { pageHead } from "@/lib/seo";
 
 // Server-rendered — the photo grid used to be a plain useQuery with no
 // loader, so the entire gallery rendered blank during SSR and only
@@ -25,12 +26,7 @@ export const Route = createFileRoute("/gallery")({
     const [content, images] = await Promise.all([fetchPageContent("/gallery"), fetchImages()]);
     return { content, images };
   },
-  head: () => ({
-    meta: [
-      { title: "Gallery — The Grand Palace Indian Restaurant Sydney" },
-      { name: "description", content: "Explore photos of The Grand Palace — our stunning interiors, exquisite Indian cuisine, birthday celebrations, corporate events and more." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/gallery"),
   component: GalleryPage,
 });
 
@@ -52,7 +48,7 @@ function GalleryPage() {
     <PageShell crumbs={[{ label: "Gallery" }]}>
       {/* Hero */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" decoding="async"
+        <img src={heroImg} alt="The Grand Palace Indian restaurant dining room, Sydney CBD" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" decoding="async"
              style={{ filter: "brightness(0.6) saturate(1.1)" }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom,rgba(6,2,0,0.6),rgba(8,3,0,0.85))" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
@@ -84,6 +80,14 @@ function GalleryPage() {
       {/* Grid */}
       <div className="section-cream">
       <div className="max-w-6xl mx-auto px-6 py-12">
+        <div className="max-w-3xl mx-auto text-center mb-10">
+          <h2 data-tgp-key="intro.heading" className="font-display text-3xl md:text-4xl text-palace mb-3">
+            {c("intro.heading", "Inside The Grand Palace, Sydney CBD")}
+          </h2>
+          <p data-tgp-key="intro.text" className="text-stone-600 leading-relaxed">
+            {c("intro.text", "Step inside our Indian fine dining restaurant in the basement at 261 George Street, Sydney CBD. Browse our royal palace-inspired interiors, signature Indian dishes, birthday celebrations, corporate functions and private events — then book a table or enquire about hosting your own celebration with us.")}
+          </p>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {filtered.map((item) => (
             <button

@@ -35,7 +35,7 @@ export function GuideListingPage({
     <PageShell crumbs={[{ label: crumbLabel }]}>
       {/* Hero */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={heroImg} alt="" className="w-full h-full object-cover" fetchPriority="high"
+        <img src={heroImg} alt="Indian dishes at The Grand Palace, Sydney CBD" className="w-full h-full object-cover" fetchPriority="high"
              style={{ filter: "brightness(0.55) saturate(1.1)" }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom,rgba(6,2,0,0.5),rgba(8,3,0,0.88))" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">

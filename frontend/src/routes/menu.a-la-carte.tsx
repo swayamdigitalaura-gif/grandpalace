@@ -64,18 +64,14 @@ import catSides    from "@/assets/menu-categories/cat-sides.jpg";
 import catVegan    from "@/assets/food-real/mains-veg-korma.jpg";
 import catJain     from "@/assets/food-real/mains-mixed-veg.jpg";
 import catDesserts from "@/assets/menu-categories/cat-desserts.jpg";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/menu/a-la-carte")({
   loader: async () => {
     const [content, rawCategories] = await Promise.all([fetchPageContent("/menu/a-la-carte"), fetchCategories()]);
     return { content, rawCategories };
   },
-  head: () => ({
-    meta: [
-      { title: "À la Carte Menu — The Grand Palace" },
-      { name: "description", content: "Full à la carte menu — authentic Indian cuisine at The Grand Palace, Sydney CBD." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/menu/a-la-carte"),
   component: MenuPage,
 });
 
@@ -176,7 +172,7 @@ function MenuPage() {
     <PageShell crumbs={[{ label: "Menu", to: "/menu" }, { label: "À la Carte" }]}>
       {/* ── Hero ── */}
       <div className="relative flex items-center justify-center text-center overflow-hidden" style={{ minHeight: "46vh" }}>
-        <img src={pageHeroImg} alt="" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover" fetchPriority="high" decoding="async" />
+        <img src={pageHeroImg} alt="Spread of à la carte Indian dishes at The Grand Palace, Sydney CBD" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover" fetchPriority="high" decoding="async" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(6,2,0,0.82) 0%, rgba(8,3,0,0.78) 50%, rgba(10,4,0,0.85) 100%)" }} />
         <div className="relative flex flex-col items-center gap-4 px-6 py-10">
           <p className="text-[9px] tracking-[0.7em] uppercase font-bold" style={{ color: "#f5c14a", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>

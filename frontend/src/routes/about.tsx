@@ -10,15 +10,11 @@ import { Editable } from "@/components/Editable";
 import interiorImg from "@/assets/gallery/Interior_058.jpg";
 import foodImg from "@/assets/menu-categories/cat-biryani.jpg";
 import corpImg from "@/assets/gallery/Corporate_084.jpeg";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/about")({
   loader: () => fetchPageContent("/about"),
-  head: () => ({
-    meta: [
-      { title: "About Us — The Grand Palace Indian Restaurant Sydney CBD" },
-      { name: "description", content: "The Grand Palace serves traditional Indian cuisine in a royal palace-inspired setting in Sydney CBD. Authentic flavours, HACCP certified, Gold Licensed." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/about"),
   component: AboutPage,
 });
 

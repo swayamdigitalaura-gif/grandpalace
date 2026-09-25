@@ -24,15 +24,11 @@ import birthdayDecorImg from "@/assets/gallery/BdayCelebration_020.jpeg";
 import bentoAmbience from "@/assets/gallery/Interior_070.jpg";
 import bentoFeast from "@/assets/events-bento-feast.jpg";
 import bentoJoy from "@/assets/gallery/Diwali_09-scaled.jpg";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/events")({
   loader: () => fetchPageContent("/events"),
-  head: () => ({
-    meta: [
-      { title: "Private Event Venue Sydney CBD — The Grand Palace" },
-      { name: "description", content: "Host corporate functions, private celebrations and birthdays at The Grand Palace, Sydney CBD. Book the whole venue or a private section, with fully customisable menus." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/events"),
   component: EventsPage,
 });
 
@@ -138,7 +134,7 @@ function Hero({ c, content }: { c: (key: string, fallback: string) => string; co
   const heroImg = useSiteImage("events-hero", content["hero.image"] || heroImgDefault);
   return (
     <section className="relative z-0 flex items-start md:items-center overflow-hidden bg-palace" style={{ minHeight: "46vh" }}>
-      <img src={heroImg} alt="" aria-hidden data-tgp-key="hero.image" fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover opacity-70" />
+      <img src={heroImg} alt="Event spread at The Grand Palace function venue, Sydney CBD" data-tgp-key="hero.image" fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover opacity-70" />
       <div className="absolute inset-0 bg-gradient-to-r from-palace via-palace/70 to-palace/20" />
       <div className="absolute inset-0 bg-gradient-to-t from-palace via-transparent to-palace/60" />
 

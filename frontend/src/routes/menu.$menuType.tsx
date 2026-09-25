@@ -1,6 +1,7 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { API_URL, type MenuCategory } from "@/lib/admin-api";
+import { buildSeoHead, titleWithBrand } from "@/lib/seo";
 
 // menuTypes with their own hand-built page (see Header.tsx's
 // KNOWN_MENU_TYPES) — this generic template only reads item.price, but
@@ -39,9 +40,13 @@ export const Route = createFileRoute("/menu/$menuType")({
     if (categories.length === 0) throw notFound();
     return categories;
   },
-  head: ({ loaderData, params }) => {
-    const menuLabel = loaderData?.[0]?.menuLabel || params.menuType;
-    return { meta: [{ title: `${menuLabel} — The Grand Palace` }] };
+  head: (ctx) => {
+    const menuLabel = ctx.loaderData?.[0]?.menuLabel || ctx.params.menuType;
+    return buildSeoHead(ctx, `/menu/${ctx.params.menuType}`, {
+      title: titleWithBrand(`${menuLabel} Menu`),
+      description: `${menuLabel} menu at The Grand Palace Indian Restaurant, 261 George Street, Sydney CBD. Authentic Indian dishes with halal, vegetarian and vegan options.`,
+      breadcrumbs: [{ name: "Menu", path: "/menu" }, { name: menuLabel }],
+    });
   },
   component: GenericMenuPage,
 });

@@ -8,6 +8,7 @@ import heroImgDefault from "@/assets/gallery/Interior_058.jpg";
 import kitchenImg from "@/assets/gallery/SLA09464.jpg";
 import { api, API_URL } from "@/lib/admin-api";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
+import { pageHead } from "@/lib/seo";
 
 type Job = {
   id: string;
@@ -37,12 +38,7 @@ export const Route = createFileRoute("/career")({
     ]);
     return { content, jobs };
   },
-  head: () => ({
-    meta: [
-      { title: "Careers — The Grand Palace Indian Restaurant Sydney" },
-      { name: "description", content: "Join the team at The Grand Palace. We're looking for passionate people to join our family-run restaurant in Sydney CBD. Current opening: Chef / Cook." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/career"),
   component: CareerPage,
 });
 
@@ -170,7 +166,7 @@ function CareerPage() {
     <PageShell crumbs={[{ label: "Career" }]}>
       {/* Hero */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" />
+        <img src={heroImg} alt="The Grand Palace restaurant interior in Sydney CBD" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom,rgba(6,2,0,0.55),rgba(8,3,0,0.92))" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
           <p data-tgp-key="hero.kicker" className="text-[11px] tracking-[0.45em] uppercase font-bold" style={{ color: "#f5c14a", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>{c("hero.kicker", "Join Our Team")}</p>

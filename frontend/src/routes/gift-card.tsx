@@ -5,15 +5,11 @@ import mandala from "@/assets/mandala.png";
 import heroImgDefault from "@/assets/hero-gift-card-dessert.jpg";
 import diningImg from "@/assets/gallery/SLA09499.jpg";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/gift-card")({
   loader: () => fetchPageContent("/gift-card"),
-  head: () => ({
-    meta: [
-      { title: "Gift Vouchers — The Grand Palace Indian Restaurant Sydney" },
-      { name: "description", content: "Give the gift of fine Indian dining. The Grand Palace gift vouchers are perfect for birthdays, anniversaries, and any occasion. Purchase online via Now Book It." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/gift-card"),
   component: GiftCardPage,
 });
 
@@ -34,7 +30,7 @@ function GiftCardPage() {
     <PageShell crumbs={[{ label: "Gift Card" }]}>
       {/* Hero */}
       <div className="relative h-72 md:h-96 overflow-hidden">
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" />
+        <img src={heroImg} alt="Indian dessert at The Grand Palace, Sydney CBD" data-tgp-key="hero.image" className="w-full h-full object-cover" fetchPriority="high" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom,rgba(6,2,0,0.55),rgba(8,3,0,0.92))" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-4">
           <p className="text-[11px] tracking-[0.45em] uppercase font-bold" style={{ color: "#f5c14a", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>The Grand Palace · Sydney CBD</p>

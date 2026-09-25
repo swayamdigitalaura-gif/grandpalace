@@ -9,15 +9,11 @@ import aLaCarteCardImg  from "@/assets/hero-menu-spread.jpg";
 import setMenuCardImg   from "@/assets/gallery/Hero_022-scaled.jpg";
 import beveragesCardImg from "@/assets/hero-beverages-wines.jpg";
 import lunchCardImg     from "@/assets/hero-lunch-special-spread.jpg";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/menu/")({
   loader: () => fetchPageContent("/menu"),
-  head: () => ({
-    meta: [
-      { title: "Menu — The Grand Palace" },
-      { name: "description", content: "Explore our à la carte dishes, Set Menus, Beverages and Lunch Special Set Menu at The Grand Palace, Sydney CBD." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/menu"),
   component: MenuHubPage,
 });
 
@@ -31,7 +27,7 @@ function MenuHubPage() {
 
       {/* ══ HERO ══ */}
       <div className="relative flex items-center justify-center text-center overflow-hidden" style={{ minHeight: "46vh" }}>
-        <img src={heroImg} alt="" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover"
+        <img src={heroImg} alt="Indian dishes from The Grand Palace menu, Sydney CBD" data-tgp-key="hero.image" className="absolute inset-0 w-full h-full object-cover"
              fetchPriority="high" decoding="async" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(6,2,0,0.82) 0%, rgba(8,3,0,0.78) 50%, rgba(10,4,0,0.85) 100%)" }} />
         <div className="relative flex flex-col items-center gap-4 px-6 py-10">
@@ -62,6 +58,8 @@ function MenuHubPage() {
       {/* ══ MENU CARDS ══ */}
       <div className="bg-stone-50 py-4 px-4 md:px-8">
         <div className="max-w-5xl mx-auto">
+          {/* The card titles are H3s — this keeps the outline H1 → H2 → H3. */}
+          <h2 className="sr-only">Our Menus</h2>
           <ExploreMenus cards={[
             { to: "/menu/a-la-carte", img: aLaCarteCardImg,  kicker: "Full Menu",       title: "À la Carte",              desc: "Our full menu of authentic Indian dishes, made to order." },
             { to: "/set-menu",        img: setMenuCardImg,   kicker: "Curated Banquets", title: "Set Menu",                desc: "Three courses of the best of TGP, from $65 per person.", pos: "25% 85%" },

@@ -3,7 +3,8 @@ import { ArrowRight, MapPin, Phone, Mail, Clock, ExternalLink as ExternalLinkIco
 import { PageShell } from "@/components/PageShell";
 import mandala from "@/assets/mandala.png";
 import type { GuideContent } from "@/lib/guidesContent";
-import { REVIEWER, RESTAURANT_ADDRESS, RESTAURANT_PHONE_DISPLAY, RESTAURANT_PHONE_TEL, RESTAURANT_EMAIL, guidesContent } from "@/lib/guidesContent";
+import { REVIEWER, RESTAURANT_ADDRESS, RESTAURANT_PHONE_DISPLAY, RESTAURANT_PHONE_TEL, RESTAURANT_EMAIL } from "@/lib/guidesContent";
+import { RelatedGuides } from "@/components/RelatedGuides";
 import {
   buildSchema, renderRich, renderBody, renderBlockText, slugify, MobileCTABar, EXPLORE_LINKS, MAPS_URL, BulletItemCards,
   GuideHeroImage, AuthorBio,
@@ -19,9 +20,6 @@ import {
  *  and structurally consistent without duplicating that logic. */
 export function NormalGuideTemplate({ guide }: { guide: GuideContent }) {
   const schemas = buildSchema(guide);
-  const related = guide.relatedSlugs
-    .map((slug) => guidesContent[slug])
-    .filter((g): g is GuideContent => Boolean(g));
 
   return (
     <PageShell crumbs={[{ label: "Guides", to: "/guides" }, { label: `${guide.tag} Guides`, to: "/guides" }, { label: guide.title }]}>
@@ -359,19 +357,7 @@ export function NormalGuideTemplate({ guide }: { guide: GuideContent }) {
           </div>
 
           {/* Related guides */}
-          {related.length > 0 && (
-            <div>
-              <h3 className="font-display text-lg text-palace mb-4">Related Guides</h3>
-              <div className="grid sm:grid-cols-3 gap-4">
-                {related.map((g) => (
-                  <Link key={g.slug} to="/guides/$slug" params={{ slug: g.slug }}
-                        className="group rounded-xl border border-stone-200 bg-white p-4 hover:border-saffron/40 hover:-translate-y-0.5 transition-all">
-                    <p className="text-[13px] font-semibold text-stone-800 leading-snug group-hover:text-amber-800 transition">{g.title}</p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
+          <RelatedGuides guide={guide} />
         </div>
       </section>
 

@@ -2,19 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import mandala from "@/assets/mandala.png";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/terms")({
   loader: () => fetchPageContent("/terms"),
-  head: () => ({
-    meta: [
-      { title: "Terms & Conditions — The Grand Palace Indian Restaurant" },
-      { name: "description", content: "Terms and conditions for dining, online ordering, gift cards, and events at The Grand Palace Indian Restaurant, Sydney CBD." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/terms"),
   component: TermsPage,
 });
 
-const sections = [
+const sections: { title: string; body: string; list?: string[]; note?: string }[] = [
   {
     title: "Definitions",
     body: `"We", "us", and "our" refer to The Grand Palace – Indian Restaurant at Basement, 261 George Street, Sydney, NSW 2000. The restaurant reserves the right to revise these terms without prior notice.`,

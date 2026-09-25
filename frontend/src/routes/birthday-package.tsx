@@ -23,15 +23,11 @@ import bday5   from "@/assets/gallery/BdayCelebration_015.JPG";
 import bday6   from "@/assets/gallery/BdayCelebration_016.jpeg";
 import bpReel       from "@/assets/video/bp-reel.mp4";
 import bpReelPoster from "@/assets/video/bp-reel-poster.jpg";
+import { faqSchema, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/birthday-package")({
   loader: () => fetchPageContent("/birthday-package"),
-  head: () => ({
-    meta: [
-      { title: "Celebrate Birthday in Sydney | The Grand Palace Indian Restaurant" },
-      { name: "description", content: "Celebrate your birthday at The Grand Palace Indian Restaurant Sydney. $150 package includes cake, décor & songs. Set menus from $40pp. Groups up to 125 guests." },
-    ],
-  }),
+  head: (ctx) => pageHead(ctx, "/birthday-package", [faqSchema(faqs)]),
   component: BirthdayPackagePage,
 });
 
@@ -743,7 +739,7 @@ function MomentsStrip() {
           <div className="grid grid-cols-3 gap-2.5">
             {[bday1, bday2, bday3, bday4, bday5, bday6].map((src, i) => (
               <div key={i} className="img-hover rounded-xl overflow-hidden aspect-square">
-                <img src={src} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img src={src} alt={`Birthday celebration at The Grand Palace, Sydney CBD — photo ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>

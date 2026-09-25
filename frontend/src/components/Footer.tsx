@@ -66,7 +66,7 @@ export function Footer() {
 
         {/* ── Col 2: Trading Hours ── */}
         <div>
-          <h4 className="text-cream text-base font-semibold mb-4 tracking-wide">Trading Hours</h4>
+          <h3 className="text-cream text-base font-semibold mb-4 tracking-wide">Trading Hours</h3>
           <div className="space-y-3 text-[13px] text-cream/60 leading-relaxed">
             <div>
               <p className="text-cream/90 font-semibold text-[13px] mb-1">Lunch</p>
@@ -89,7 +89,7 @@ export function Footer() {
 
         {/* ── Col 3: Contact + Conditions ── */}
         <div>
-          <h4 className="text-cream text-base font-semibold mb-4 tracking-wide">Contact Us</h4>
+          <h3 className="text-cream text-base font-semibold mb-4 tracking-wide">Contact Us</h3>
           <ul className="space-y-2.5 text-[13px] mb-6">
             <li>
               <a href={`tel:${PHONE_TEL}`} className="flex items-center gap-2.5 text-cream/70 hover:text-gold transition">
@@ -103,7 +103,7 @@ export function Footer() {
             </li>
           </ul>
 
-          <h4 className="text-cream text-base font-semibold mb-3 tracking-wide">Conditions of Entry</h4>
+          <h3 className="text-cream text-base font-semibold mb-3 tracking-wide">Conditions of Entry</h3>
           <ul className="space-y-2 text-[13px] text-cream/60">
             {[
               ...(minChargeActive ? ["Minimum charge per person $35. Children aged 5 to 10 is $25."] : []),
@@ -121,7 +121,7 @@ export function Footer() {
 
         {/* ── Col 4: Visit Us ── */}
         <div>
-          <h4 className="text-cream text-base font-semibold mb-4 tracking-wide">Visit Us</h4>
+          <h3 className="text-cream text-base font-semibold mb-4 tracking-wide">Visit Us</h3>
           <ul className="space-y-3 text-[13px] text-cream/60 mb-4">
             <li className="flex items-start gap-2.5">
               <MapPin className="h-4 w-4 text-gold mt-0.5 shrink-0" />
