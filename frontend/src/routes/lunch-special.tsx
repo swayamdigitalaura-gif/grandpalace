@@ -352,7 +352,7 @@ function LunchSpecialPage() {
       {/* ══ NOTES ══ */}
       <div style={{ background: "linear-gradient(120deg,#221000,#3d1f06 60%,#221000)" }}>
         <div className="max-w-4xl mx-auto px-6 py-14">
-          <MandalaDivider tone="gold" />
+          <MandalaDivider />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {notes.map((note, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3.5 rounded-xl"

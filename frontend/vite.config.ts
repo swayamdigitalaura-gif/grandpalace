@@ -109,7 +109,14 @@ export default defineConfig({
       "/blog/restaurant-for-birthday-dinner": { redirect: { to: "/blog/best-indian-birthday-dinner-sydney-where-to-celebrate-in-style", status: 301 } },
       "/blog/where-to-host-a-royal-indian-birthday-dinner-in-sydney": { redirect: { to: "/blog/best-birthday-venues-sydney-cbd", status: 301 } },
     },
-  },
+    // `@lovable.dev/vite-tanstack-config`'s type for `nitro` only lists a
+    // narrow, stable subset of options (see the comment above `nitro:` on
+    // this file) and doesn't include `routeRules`, even though Nitro itself
+    // accepts and honors it at runtime (route-level proxy/cache-control/
+    // redirect rules used throughout this file). Cast the whole block so it
+    // keeps working without fighting the wrapper's intentionally-narrow types.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any,
   vite: {
     plugins: [
       ViteImageOptimizer({

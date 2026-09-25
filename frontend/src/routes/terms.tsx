@@ -89,7 +89,7 @@ function TermsPage() {
           </p>
 
           <div className="space-y-10">
-            {sections.map(({ title, body, list, note }, i) => {
+            {sections.map(({ title, body, list }, i) => {
               const sk = SECTION_KEYS[i] ?? `section${i}`;
               return (
               <div key={i} className="scroll-mt-20">
@@ -106,7 +106,6 @@ function TermsPage() {
                     ))}
                   </ul>
                 )}
-                {note && <p className="italic text-palace/45 text-[13px]">{note}</p>}
               </div>
               );
             })}
