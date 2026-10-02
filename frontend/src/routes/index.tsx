@@ -12,6 +12,7 @@ import menuHero020Default from "@/assets/menu-hero-020.jpg";
 import { useSiteImage } from "@/lib/useSiteImage";
 import introVideo from "@/assets/intro-video.mp4";
 import birthdayImgDefault from "@/assets/birthday-015.jpg";
+import diwaliCardImg from "@/assets/diwali-catering-card.jpg";
 import milestoneImgDefault from "@/assets/corporate-section.png";
 import venueImgDefault from "@/assets/venue-section.png";
 import corporateImgDefault from "@/assets/milestone-celebration.jpg";
@@ -523,84 +524,46 @@ function Home() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Card 1 — Indian Whisky */}
+            {/* Card 1 — Diwali Catering Box */}
             <div className="img-hover bg-white rounded-xl overflow-hidden shadow-md hover:-translate-y-2 hover:shadow-[0_16px_40px_rgba(180,100,20,0.18)] hover:border-saffron/40 border border-stone-100 transition-all duration-500 flex flex-col">
               <div className="overflow-hidden h-60 shrink-0 bg-palace">
                 <img
-                  src="https://booriz1miux5j9vr.public.blob.vercel-storage.com/Whiskey-sS8lZkbA2F93CFH7czzi16usJuIiLk.png"
-                  alt="Indian Whisky in Sydney"
+                  src={diwaliCardImg}
+                  alt="Diwali Catering Box"
                   loading="lazy"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="p-6 flex flex-col flex-1">
                 <h3 className="font-display text-xl text-palace mb-2 leading-snug">
-                  Indian Whisky in Sydney
+                  Diwali Catering Box
                 </h3>
                 <p className="text-saffron text-sm font-medium mb-2">
-                  Indri, Rampur & Amrut — three of India's most awarded single malts.
+                  Six festive Indian savouries and sweets in one box — $99
                 </p>
                 <p className="text-palace/65 text-sm leading-relaxed mb-4 flex-1">
-                  Poured alongside authentic Indian food in Sydney CBD, from $18 a glass.
+                  Paneer cigar rolls, palak pakora, dal kachori, samosas, motichur laddu and gulab
+                  jamun. Order by Thursday 5 November for in-store collection.
                 </p>
                 <div className="border-t border-palace/10 pt-4 flex gap-3">
                   <Link
-                    to="/whats-on/$slug"
-                    params={{ slug: "indian-whisky-sydney-cbd" }}
+                    to="/whats-on/diwali-catering-box"
                     className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition"
                   >
-                    Learn More<span className="sr-only"> about Indian whisky in Sydney</span>
+                    Learn More<span className="sr-only"> about the Diwali Catering Box</span>
                   </Link>
                   <Link
-                    to="/book-a-table"
-                    className="border border-palace text-palace rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-palace hover:text-cream transition"
-                  >
-                    Book Now
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2 — Biryani */}
-            <div className="img-hover bg-white rounded-xl overflow-hidden shadow-md hover:-translate-y-2 hover:shadow-[0_16px_40px_rgba(180,100,20,0.18)] hover:border-saffron/40 border border-stone-100 transition-all duration-500 flex flex-col">
-              <div className="overflow-hidden h-60 shrink-0 bg-palace">
-                <img
-                  src="https://booriz1miux5j9vr.public.blob.vercel-storage.com/Briyani-oTqmcjPTCcfpmihvZDUGxQxVAjuzh8.png"
-                  alt="$20 Takeaway Biryani"
-                  loading="lazy"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-1">
-                <h3 className="font-display text-xl text-palace mb-2 leading-snug">
-                  $20 Takeaway Biryani Lunch
-                </h3>
-                <p className="text-saffron text-sm font-medium leading-relaxed mb-4 flex-1">
-                  Enjoy our $20 takeaway biryani lunch special at The Grand Palace - Indian
-                  Restaurant, Sydney.
-                </p>
-                <div className="border-t border-palace/10 pt-4 flex gap-3">
-                  <Link
-                    to="/whats-on/$slug"
-                    params={{ slug: "takeaway-biryani-lunch-special" }}
-                    className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition"
-                  >
-                    Learn More
-                    <span className="sr-only"> about the $20 takeaway biryani lunch special</span>
-                  </Link>
-                  <a
-                    href="https://the-grand-palace-indian-restaurant.square.site/"
-                    target="_blank"
-                    rel="noreferrer"
+                    to="/whats-on/diwali-catering-box"
+                    hash="order"
                     className="border border-palace text-palace rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-palace hover:text-cream transition"
                   >
                     Order Now
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
 
-            {/* Card 3 — Celebrate Birthday */}
+            {/* Card 2 — Celebrate Birthday */}
             <div className="img-hover bg-white rounded-xl overflow-hidden shadow-md hover:-translate-y-2 hover:shadow-[0_16px_40px_rgba(180,100,20,0.18)] hover:border-saffron/40 border border-stone-100 transition-all duration-500 flex flex-col">
               <div className="overflow-hidden h-60 shrink-0 bg-palace">
                 <img
@@ -627,6 +590,43 @@ function Home() {
                     className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition"
                   >
                     Learn More<span className="sr-only"> about birthday party packages</span>
+                  </Link>
+                  <Link
+                    to="/book-a-table"
+                    className="border border-palace text-palace rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-palace hover:text-cream transition"
+                  >
+                    Book Now
+                  </Link>
+                </div>
+              </div>
+            </div>
+            {/* Card 3 — Indian Whisky */}
+            <div className="img-hover bg-white rounded-xl overflow-hidden shadow-md hover:-translate-y-2 hover:shadow-[0_16px_40px_rgba(180,100,20,0.18)] hover:border-saffron/40 border border-stone-100 transition-all duration-500 flex flex-col">
+              <div className="overflow-hidden h-60 shrink-0 bg-palace">
+                <img
+                  src="https://booriz1miux5j9vr.public.blob.vercel-storage.com/Whiskey-sS8lZkbA2F93CFH7czzi16usJuIiLk.png"
+                  alt="Indian Whisky in Sydney"
+                  loading="lazy"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="p-6 flex flex-col flex-1">
+                <h3 className="font-display text-xl text-palace mb-2 leading-snug">
+                  Indian Whisky in Sydney
+                </h3>
+                <p className="text-saffron text-sm font-medium mb-2">
+                  Indri, Rampur & Amrut — three of India's most awarded single malts.
+                </p>
+                <p className="text-palace/65 text-sm leading-relaxed mb-4 flex-1">
+                  Poured alongside authentic Indian food in Sydney CBD, from $18 a glass.
+                </p>
+                <div className="border-t border-palace/10 pt-4 flex gap-3">
+                  <Link
+                    to="/whats-on/$slug"
+                    params={{ slug: "indian-whisky-sydney-cbd" }}
+                    className="bg-palace text-cream rounded-full px-4 py-2 text-xs font-medium uppercase tracking-wide hover:bg-saffron transition"
+                  >
+                    Learn More<span className="sr-only"> about Indian whisky in Sydney</span>
                   </Link>
                   <Link
                     to="/book-a-table"
