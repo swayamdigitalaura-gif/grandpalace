@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { API_URL, SITE_URL } from "../lib/admin-api";
+import { captureAttribution } from "../lib/tracking";
 import { normPath, OG_LOCALE, SITE_NAME, type SeoOverride } from "../lib/seo";
 
 type SiteSeoConfigLite = { headerCode: string | null; footerCode: string | null };
@@ -230,6 +231,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Remember gclid / utm parameters (first touch) so they can be saved with leads and orders.
+  useEffect(() => {
+    captureAttribution();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

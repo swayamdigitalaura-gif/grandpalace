@@ -95,7 +95,7 @@ router.post("/create-catering-checkout-session", async (req, res) => {
       mode: "payment",
       customer_email: email,
       line_items,
-      success_url: `${origin}/office-catering?payment=success`,
+      success_url: `${origin}/office-catering?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/office-catering?payment=cancelled`,
       metadata: {
         orderType: "catering", sessionId, name, mobile: mobile || "",
@@ -155,6 +155,35 @@ router.post("/create-diwali-checkout-session", async (req, res) => {
   }
 });
 
+// Read-only order summary used for analytics after Stripe sends the customer back.
+// Amounts come from Stripe, never from the browser. Returns no personal data except
+// the email/phone the customer just typed (needed for enhanced conversions).
+router.get("/order-summary", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    const id = String(req.query.session_id || "");
+    if (!id.startsWith("cs_")) return res.json({ paid: false });
+    const session = await getStripe().checkout.sessions.retrieve(id);
+    if (session.payment_status !== "paid") return res.json({ paid: false });
+    const m = session.metadata || {};
+    if (m.orderType !== "catering") return res.json({ paid: false });
+    res.json({
+      paid: true,
+      total: (session.amount_total || 0) / 100,
+      vegQty: Number(m.vegQty || 0),
+      nonVegQty: Number(m.nonVegQty || 0),
+      pickupDate: m.pickupDate || "",
+      pickupTime: m.pickupTime || "",
+      delivery: m.delivery || "pickup",
+      email: session.customer_email || "",
+      phone: m.mobile || "",
+    });
+  } catch (err) {
+    console.error("Order summary error:", err.message);
+    res.json({ paid: false });
+  }
+});
+
 // Stripe webhook — needs the raw body to verify the signature, so this
 // route parses it itself (the app-level JSON parser skips this path).
 router.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
@@ -178,6 +207,10 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
       const amountPaidAud = (session.amount_total || 0) / 100;
       const data = { vegQty, nonVegQty, pickupDate, pickupTime, delivery, stripeSessionId: session.id, amountPaidAud };
 
+      // Keep anything saved while the visitor was typing (e.g. traffic source), then add the paid details.
+      const previous = await prisma.enquiry.findUnique({ where: { sessionId } }).catch(() => null);
+      const previousData = previous && previous.data && typeof previous.data === "object" ? previous.data : {};
+
       await prisma.enquiry.upsert({
         where: { sessionId },
         create: {
@@ -185,7 +218,7 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
           name: name || null, email: session.customer_email || null, phone: mobile || null,
           subject: "TGP Platter Box Order", message: message || null, step: "confirm", data,
         },
-        update: { status: "completed", data },
+        update: { status: "completed", data: { ...previousData, ...data } },
       });
 
       const emailPayload = {
