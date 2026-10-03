@@ -4,7 +4,15 @@ import { SimpleCaptcha, useSimpleCaptcha } from "@/components/SimpleCaptcha";
 import { api } from "@/lib/admin-api";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 import { useSiteImage } from "@/lib/useSiteImage";
-import { track, trackEcommerce, platterItems, getAttribution, reportPlatterPurchase, PLATTER_VEG, PLATTER_NONVEG } from "@/lib/tracking";
+import {
+  track,
+  trackEcommerce,
+  platterItems,
+  getAttribution,
+  reportPlatterPurchase,
+  PLATTER_VEG,
+  PLATTER_NONVEG,
+} from "@/lib/tracking";
 import mandala from "@/assets/mandala.png";
 import { useEffect, useRef, useState, createContext, useContext } from "react";
 import {
@@ -732,8 +740,17 @@ function PlatterOrderWizard() {
     if (!captcha.verify()) return;
     trackEcommerce(
       "begin_checkout",
-      { currency: "AUD", value: vegQty * 75 + nonVegQty * 85, items: platterItems(vegQty, nonVegQty) },
-      { offer: "office_platter", pickup_date: form.pickupDate, pickup_time: form.pickupTime, fulfillment: form.delivery },
+      {
+        currency: "AUD",
+        value: vegQty * 75 + nonVegQty * 85,
+        items: platterItems(vegQty, nonVegQty),
+      },
+      {
+        offer: "office_platter",
+        pickup_date: form.pickupDate,
+        pickup_time: form.pickupTime,
+        fulfillment: form.delivery,
+      },
     );
     setStep(1);
   }
@@ -743,8 +760,18 @@ function PlatterOrderWizard() {
     setStatus("submitting");
     trackEcommerce(
       "add_payment_info",
-      { currency: "AUD", value: vegQty * 75 + nonVegQty * 85, payment_type: "stripe", items: platterItems(vegQty, nonVegQty) },
-      { offer: "office_platter", pickup_date: form.pickupDate, pickup_time: form.pickupTime, fulfillment: form.delivery },
+      {
+        currency: "AUD",
+        value: vegQty * 75 + nonVegQty * 85,
+        payment_type: "stripe",
+        items: platterItems(vegQty, nonVegQty),
+      },
+      {
+        offer: "office_platter",
+        pickup_date: form.pickupDate,
+        pickup_time: form.pickupTime,
+        fulfillment: form.delivery,
+      },
     );
     try {
       const { url } = await api.post<{ url: string }>(
@@ -916,7 +943,16 @@ function PlatterOrderWizard() {
                                     set((q) => q + 1);
                                     trackEcommerce(
                                       "add_to_cart",
-                                      { currency: "AUD", value: price, items: [{ ...(key === "veg" ? PLATTER_VEG : PLATTER_NONVEG), quantity: 1 }] },
+                                      {
+                                        currency: "AUD",
+                                        value: price,
+                                        items: [
+                                          {
+                                            ...(key === "veg" ? PLATTER_VEG : PLATTER_NONVEG),
+                                            quantity: 1,
+                                          },
+                                        ],
+                                      },
                                       { offer: "office_platter" },
                                     );
                                   }}
