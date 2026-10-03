@@ -4,6 +4,7 @@ import { SimpleCaptcha, useSimpleCaptcha } from "@/components/SimpleCaptcha";
 import { api } from "@/lib/admin-api";
 import { fetchPageContent, useLiveContent, makeContent } from "@/lib/pageContent";
 import { useSiteImage } from "@/lib/useSiteImage";
+import { track, trackEcommerce, platterItems, getAttribution, reportPlatterPurchase, PLATTER_VEG, PLATTER_NONVEG } from "@/lib/tracking";
 import mandala from "@/assets/mandala.png";
 import { useEffect, useRef, useState, createContext, useContext } from "react";
 import {
@@ -636,6 +637,7 @@ function PlatterOrderWizard() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     if (payment === "success") {
+      reportPlatterPurchase(params.get("session_id"));
       setStep("done");
       sessionStorage.removeItem("tgp-catering-session");
       window.history.replaceState({}, "", window.location.pathname);
@@ -697,6 +699,7 @@ function PlatterOrderWizard() {
             pickupDate: form.pickupDate,
             pickupTime: form.pickupTime,
             delivery: form.delivery,
+            attribution: getAttribution(),
           },
         })
         .catch(() => {});
@@ -727,12 +730,22 @@ function PlatterOrderWizard() {
     }
     setQtyError("");
     if (!captcha.verify()) return;
+    trackEcommerce(
+      "begin_checkout",
+      { currency: "AUD", value: vegQty * 75 + nonVegQty * 85, items: platterItems(vegQty, nonVegQty) },
+      { offer: "office_platter", pickup_date: form.pickupDate, pickup_time: form.pickupTime, fulfillment: form.delivery },
+    );
     setStep(1);
   }
 
   async function handleMakePayment(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
+    trackEcommerce(
+      "add_payment_info",
+      { currency: "AUD", value: vegQty * 75 + nonVegQty * 85, payment_type: "stripe", items: platterItems(vegQty, nonVegQty) },
+      { offer: "office_platter", pickup_date: form.pickupDate, pickup_time: form.pickupTime, fulfillment: form.delivery },
+    );
     try {
       const { url } = await api.post<{ url: string }>(
         "/api/stripe/create-catering-checkout-session",
@@ -899,7 +912,14 @@ function PlatterOrderWizard() {
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => set((q) => q + 1)}
+                                  onClick={() => {
+                                    set((q) => q + 1);
+                                    trackEcommerce(
+                                      "add_to_cart",
+                                      { currency: "AUD", value: price, items: [{ ...(key === "veg" ? PLATTER_VEG : PLATTER_NONVEG), quantity: 1 }] },
+                                      { offer: "office_platter" },
+                                    );
+                                  }}
                                   className="h-7 w-7 rounded-full border border-saffron/30 flex items-center justify-center text-saffron hover:bg-saffron/10 transition"
                                 >
                                   <Plus className="h-3.5 w-3.5" />
@@ -1377,7 +1397,18 @@ function EnquirySection() {
           date: form.date,
           guests: form.guests,
           dietary: form.dietary || null,
+          attribution: getAttribution(),
         },
+      });
+      track("generate_lead", {
+        offer: "office_quote",
+        lead_type: "quote_form",
+        service_type: form.type,
+        guests: form.guests,
+        event_date: form.date,
+        value: 100,
+        currency: "AUD",
+        user_data: { email: form.email, phone_number: form.phone },
       });
       setSubmitted(true);
     } catch {
