@@ -159,6 +159,7 @@ router.post("/create-diwali-checkout-session", async (req, res) => {
 // Amounts come from Stripe, never from the browser. Returns no personal data except
 // the email/phone the customer just typed (needed for enhanced conversions).
 router.get("/order-summary", async (req, res) => {
+  res.set("Cache-Control", "no-store");
   try {
     const id = String(req.query.session_id || "");
     if (!id.startsWith("cs_")) return res.json({ paid: false });

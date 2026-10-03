@@ -44,6 +44,7 @@ const ATTR_KEYS = [
   "utm_content",
 ];
 const ATTR_STORAGE_KEY = "tgp_attr";
+const ATTR_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // Google Ads attribution window is 30-90 days
 
 export function captureAttribution(): void {
   try {
@@ -54,7 +55,8 @@ export function captureAttribution(): void {
       if (v) found[k] = v.slice(0, 200);
     });
     if (Object.keys(found).length === 0) return;
-    // Keep the first touch unless a new Google Ads click id arrives.
+    // Keep the first touch (getAttribution() returns null once it is older than 90 days),
+    // unless a new Google Ads click id arrives.
     const existing = getAttribution();
     if (existing && !found.gclid && !found.gbraid && !found.wbraid) return;
     localStorage.setItem(
@@ -69,7 +71,11 @@ export function captureAttribution(): void {
 export function getAttribution(): Record<string, unknown> | null {
   try {
     const raw = localStorage.getItem(ATTR_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const ts = Number(parsed.ts || 0);
+    if (!ts || Date.now() - ts > ATTR_MAX_AGE_MS) return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -116,14 +122,15 @@ type OrderSummary = {
 export function reportPlatterPurchase(sessionId: string | null): void {
   try {
     if (!sessionId || !sessionId.startsWith("cs_")) return;
+    // localStorage (not sessionStorage) so re-opening the same success link in another tab never double-counts.
     const key = `tgp_purchase_${sessionId}`;
-    if (sessionStorage.getItem(key)) return;
+    if (localStorage.getItem(key)) return;
     api
       .get<OrderSummary>(`/api/stripe/order-summary?session_id=${encodeURIComponent(sessionId)}`)
       .then((o) => {
         if (!o || !o.paid) return;
-        if (sessionStorage.getItem(key)) return;
-        sessionStorage.setItem(key, "1");
+        if (localStorage.getItem(key)) return;
+        localStorage.setItem(key, "1");
         trackEcommerce(
           "purchase",
           {
